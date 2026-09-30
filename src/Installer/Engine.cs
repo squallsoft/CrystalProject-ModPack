@@ -12,7 +12,7 @@ internal record TransactionFile(string Name, bool Existed, string BeforeHash, st
 internal record Journal(string GamePath, string Work, TransactionFile[] Files);
 internal sealed class Engine
 {
-    public const string Version = "0.1.0-rc1";
+    public const string Version = "0.1.0";
     public string Game { get; }
     public string Exe => Path.Combine(Game, "Crystal Project.exe");
     public string Store { get; }

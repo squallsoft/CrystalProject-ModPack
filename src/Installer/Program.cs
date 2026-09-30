@@ -55,7 +55,7 @@ internal sealed class MainForm : Form
         Font = new Font("Segoe UI", 10); AutoScaleMode = AutoScaleMode.Dpi;
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(22), ColumnCount = 1, RowCount = 9 };
         layout.Controls.Add(new Label { Text = "Crystal Project Mod Installer", Font = new Font(Font.FontFamily, 19, FontStyle.Bold), AutoSize = true });
-        layout.Controls.Add(new Label { Text = "Release candidate · Native gameplay validation required", AutoSize = true });
+        layout.Controls.Add(new Label { Text = "Version 0.1.0 - Supports Crystal Project 1.6.9", AutoSize = true });
         var folder = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, AutoSize = true }; folder.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         var browse = new Button { Text = "Browse…", AutoSize = true }; folder.Controls.Add(path); folder.Controls.Add(browse); layout.Controls.Add(folder);
         layout.Controls.Add(status); layout.Controls.Add(music); layout.Controls.Add(home);
@@ -68,7 +68,7 @@ internal sealed class MainForm : Form
         restore.Click += async (_, _) => { if (!ConfirmDisableHome()) return; await Run(e => { e.Apply(new(false, false)); return "Vanilla executable restored. Saves were not changed. Keep Home Points enabled when loading saves containing more than three points."; }); };
         repair.Click += async (_, _) => await Run(e => { e.Recover(); e.Apply(e.Inspect().Mods ?? throw new IOException("Unsupported version. Use Steam's Verify integrity of game files.")); return "Installed configuration rebuilt and verified."; });
         clean.Click += async (_, _) => await Run(e => "Legacy files archived and removed. Report: " + e.CleanLegacy());
-        details.Click += (_, _) => MessageBox.Show(this, $"Installer: {Engine.Version}\nSupported game: 1.6.9.0 (exact hash only)\nMusic: 0.2.3 nested LoopPoint runtime\nHome Points: 0.1.0-rc1\nInstalled: {engine?.Record()?.Mods}\nBackup: {engine?.FindOriginal() ?? "missing"}\nLog: {engine?.LogPath}\n\nThis build requests Administrator access at launch for Program Files installations. Backups use the elevated account's LocalAppData.\n\nBefore disabling Home Points, retain an expanded save and use a separate vanilla save. Vanilla cannot safely sanitize expanded arrays.", "About / Details");
+        details.Click += (_, _) => MessageBox.Show(this, $"Installer: {Engine.Version}\nSupported game: 1.6.9.0 (exact hash only)\nMusic: 0.2.3 nested LoopPoint runtime\nHome Points: 0.1.0\nInstalled: {engine?.Record()?.Mods}\nBackup: {engine?.FindOriginal() ?? "missing"}\nLog: {engine?.LogPath}\n\nThis build requests Administrator access at launch for Program Files installations. Backups use the elevated account's LocalAppData.\n\nBefore disabling Home Points, retain an expanded save and use a separate vanilla save. Vanilla cannot safely sanitize expanded arrays.", "About / Details");
         Shown += (_, _) => RefreshState();
     }
     bool ConfirmDisableHome()

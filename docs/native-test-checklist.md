@@ -1,12 +1,12 @@
 # RC acceptance checklist
 
-Status: release candidate, not final.
+Status: v0.1.0 released on 2026-09-30 following player acceptance. The checklist below preserves the original RC test plan; individual boxes are not retroactively marked when the player did not enumerate them.
 
 Completed: native combined 1.6.9 title screen and main menu, with no database error. Installer window inspected visually; auto-detected Steam path, legacy failed-build status, controls, and hash display are legible.
 
 The initial Steam-relayed smoke-test launches did not expose a window. A direct launch with the normal Steam app-ID environment reached the main menu. Steam-library Play relaunch should be rechecked on this machine. No Steam configuration or security settings were changed.
 
-The following require the player's native validation on a copied/test save:
+Original player test plan (player subsequently reported Home Points had no issues and recalled no music issues):
 
 - [ ] Enhanced Home Point OFF: ordinary set/warp behavior.
 - [ ] Enhanced Home Point ON: create #1, #2, #3, #4, #5, and several more; New Home Point Slot continues appearing.

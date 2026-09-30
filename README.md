@@ -1,6 +1,6 @@
-# Crystal Project Mod Installer v0.1.0-rc1
+# Crystal Project Mod Installer v0.1.0
 
-Release candidate for Windows Steam players. Gameplay testing is still required before public release.
+Windows Steam release. Home Points passed player testing; the music test log showed no errors across battle, boss, and victory selections.
 
 ## What this mod does
 
@@ -19,7 +19,7 @@ Other builds are refused. A matching version number alone is not sufficient.
 ## Installation
 
 1. Close Crystal Project.
-2. Keep this installer outside the game folder. Open **CrystalProjectModInstaller.exe** and allow its Administrator prompt. This RC requests elevation at launch so it can update installations in Program Files.
+2. Keep this installer outside the game folder. Open **CrystalProjectModInstaller.exe** and allow its Administrator prompt. This installer requests elevation at launch so it can update installations in Program Files.
 3. Check the detected folder, or choose **Browse**. Select the mods and click **Install / Apply Changes**.
 4. For music, place your own `.ogg` files in `ogg/Battle`, `ogg/Boss`, and `ogg/Victory` inside the game folder. An empty folder uses the original music. Files directly in `ogg` are ignored. Keep the game's built-in Random Music option OFF, as required by the existing custom-music mod.
 5. For additional Home Points, enable **Enhanced Home Point** in the game's assist options.
@@ -46,7 +46,7 @@ An unknown executable is never patched or replaced with an older backup. Wait fo
 
 ## Save compatibility
 
-Existing one-to-three-point collections are supported. Added points use the game's existing BSON save structure. Automated tests cover 40 points, serialization/reload, malformed arrays, and switching collections. Full in-game save/reload and multiple-save testing remain RC acceptance checks.
+Existing one-to-three-point collections are supported. Added points use the game's existing BSON save structure. Automated tests cover 40 points, serialization/reload, malformed arrays, and switching collections. Home Points also passed player gameplay testing.
 
 ## Troubleshooting
 

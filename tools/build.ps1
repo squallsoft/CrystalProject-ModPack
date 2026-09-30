@@ -8,7 +8,7 @@ try {
     if ($LASTEXITCODE) { throw 'Music build failed' }
     & $sdk build src\Runtime\HomePoints.csproj -c Release
     if ($LASTEXITCODE) { throw 'Home Points build failed' }
-    & $sdk publish src\Installer\Installer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts\release\v0.1.0-rc1
+    & $sdk publish src\Installer\Installer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts\release\v0.1.0
     if ($LASTEXITCODE) { throw 'Installer publish failed' }
-    Copy-Item README.md,CHANGELOG.md,NOTICE.md artifacts\release\v0.1.0-rc1
+    Copy-Item README.md,CHANGELOG.md,NOTICE.md artifacts\release\v0.1.0
 } finally { Pop-Location }
