@@ -1,0 +1,4 @@
+PASS: Running game process (Close Crystal Project completely before changing files.)
+PASS: Running-process refusal leaves EXE intact
+PASS: Read-only executable (Game executable is read-only. No game files have been changed.)
+PASS: Read-only failure leaves EXE intact

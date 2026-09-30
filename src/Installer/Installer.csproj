@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AssemblyName>CrystalProjectModInstaller</AssemblyName><Version>0.1.0-rc1</Version><ApplicationManifest>app.manifest</ApplicationManifest><DebugType>none</DebugType></PropertyGroup>
+  <ItemGroup><PackageReference Include="Mono.Cecil" Version="0.11.6"/></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="../Runtime/bin/Release/net462/CrystalProjectRandomMusic.dll" LogicalName="CrystalProjectRandomMusic.dll"/><EmbeddedResource Include="../Runtime/bin/Release/net462/CrystalProjectHomePoints.dll" LogicalName="CrystalProjectHomePoints.dll"/><EmbeddedResource Include="../../docs/cleanup-allowlist.json" LogicalName="cleanup.json"/></ItemGroup>
+</Project>

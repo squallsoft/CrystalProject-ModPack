@@ -1,0 +1,22 @@
+[
+  {
+    "Music": false,
+    "Home": false,
+    "Sha256": "36f7d413160a4deee36b47fc6ac534e87cadb6f23f57337d4630ec99cedb14e6"
+  },
+  {
+    "Music": true,
+    "Home": false,
+    "Sha256": "50031fb3b88f942842f4d93a5eaea6af0d7acef444f278d11d9a94826936a7c9"
+  },
+  {
+    "Music": false,
+    "Home": true,
+    "Sha256": "1d4b1e1c1be56dda9307907b7fef50c7ef9616c4c9f9ae3e35162fb6b3d393c5"
+  },
+  {
+    "Music": true,
+    "Home": true,
+    "Sha256": "f6fb1be24074cd6a53abcafe0233b22da8a763fc1678b92c9a68d158067f5479"
+  }
+]

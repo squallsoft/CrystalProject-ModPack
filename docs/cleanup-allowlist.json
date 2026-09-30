@@ -1,0 +1,270 @@
+[
+    {
+        "Path":  "Check-UnlimitedHomePoints.ps1",
+        "Hash":  "c6ed6b80a703fcf20a2363983114dbbb5fcb9cf8c5b9caae5ecdc617675cd4ed"
+    },
+    {
+        "Path":  "CHECK_HOME_POINTS_INSTALL.bat",
+        "Hash":  "08fa26e103b93579b83f528a367cdfe6d1802c6eb8022b96b5d7b368a8ce21ef"
+    },
+    {
+        "Path":  "Crystal Project.exe.unlimited_home_points.prepatch.bak",
+        "Hash":  "1768ff8268fc09f817c8109a43e683411f0f647bb7d74928c00f1a102a5a38f3"
+    },
+    {
+        "Path":  "Install-UnlimitedHomePoints.ps1",
+        "Hash":  "c485935feab922dc73e6bd87e062536b9080fbf08f875b719b624b2893ad72f8"
+    },
+    {
+        "Path":  "INSTALL_CUSTOM_OGG.bat",
+        "Hash":  "86aa61b63d6ee78bbb7654457c3f602110c4f242c579a87f39758d006e754c7c"
+    },
+    {
+        "Path":  "INSTALL_HOME_POINTS.bat",
+        "Hash":  "4ebc401efe612e803d6c6cec686417797b290aaa5520b3944ec705f61166261c"
+    },
+    {
+        "Path":  "INSTALL_PROTOTYPE.bat",
+        "Hash":  "93b1fd5baac4d1c3345dd0e570a63f94635d3bffbdda1773fc05cab1ab7714ab"
+    },
+    {
+        "Path":  "INSTALL_UNLIMITED_HOME_POINTS.bat",
+        "Hash":  "07f3905f1f21f0bfbadd04ab370b385e61d759341850e2fb758a1d1eba1f8439"
+    },
+    {
+        "Path":  "PATCH_MANIFEST.txt",
+        "Hash":  "ed3dfb1b63c1a2b0c55f96393704e3aa1b616ca456f5ce15d14c0f6a83953921"
+    },
+    {
+        "Path":  "README.txt",
+        "Hash":  "3f2e08f2673986b62f2b13c62b8cadbfc21dacdabdf5da3427570b9796f2a19a"
+    },
+    {
+        "Path":  "UNINSTALL_CUSTOM_OGG.bat",
+        "Hash":  "a4cf70dd859a1b37aeca8fdc18e664a839c2cec45a8595f710cd1f626e31c883"
+    },
+    {
+        "Path":  "UNINSTALL_PROTOTYPE.bat",
+        "Hash":  "e29ba595d36690e41640240dfd9fffabf85f1b9c54ce4f0f2fb869c12b91ac91"
+    },
+    {
+        "Path":  "UNINSTALL_UNLIMITED_HOME_POINTS.bat",
+        "Hash":  "235420bb99f46dcc0e22d0b81237063805c16e71d3f85bd77458266ea489f547"
+    },
+    {
+        "Path":  "UnlimitedHomePoints-install.log",
+        "Hash":  "05e022a1cdd866373dc9fa18a686943b7291d1a8d55ce00a6d528d9ad4f6ab5b"
+    },
+    {
+        "Path":  "UnlimitedHomePoints.installed.txt",
+        "Hash":  "aefcd1b51aad5ae00297796289b65d3e0faf398f9339118392ed0a04675e5dbd"
+    },
+    {
+        "Path":  "payload\\Crystal Project.exe",
+        "Hash":  "65cfbba9ed7af1f0c7db110f85719fa695a92cc088873a157fa95d92fa720d79"
+    },
+    {
+        "Path":  "RandomMusic\\install-manifest.json",
+        "Hash":  "dac33db1227bc580498d2bb634b28fed1aeac0cdcd78c6e1bb3fdd6526525094"
+    },
+    {
+        "Path":  "RandomMusic\\Backup\\Crystal Project.exe.1.6.9.original",
+        "Hash":  "36f7d413160a4deee36b47fc6ac534e87cadb6f23f57337d4630ec99cedb14e6"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6.nupkg",
+        "Hash":  "d2a23832aaa948ba9a01acc42b5726e34c5f995958f1b30d45c0e7c70b3a72d5"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\.signature.p7s",
+        "Hash":  "9692309a49a5fd80d26e250b4e2c2c6e35873f1397caead7cb997ce91d17d553"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\Mono.Cecil.nuspec",
+        "Hash":  "52fa41faa56134d176e8816347f040c01837d8c4458d43fef0166c27559d4bd9"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\[Content_Types].xml",
+        "Hash":  "abdd00f5935de1e02269c98a007a98fd67dc61223641b4566204f7f86781ea19"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.dll",
+        "Hash":  "c41bdb9ffd3c5f6e17d2382c1012d73703e035e3f1100245fdd4e08c8dc6eb5b"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Mdb.dll",
+        "Hash":  "570a437dea0271d1d5c8b7d6a408b0b2635bdb0e8b8d5051878f3e7fca087f89"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Mdb.pdb",
+        "Hash":  "66f96d1c188f913aad0192708aebfcc3c6e2c63fbdc6c5d842c80953e1df256f"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.pdb",
+        "Hash":  "7731a001867c86c2db9ea12ebd6994ac7e43c7fd75bf1b5ee4f877601ef0bc43"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Pdb.dll",
+        "Hash":  "50a1a1a79dc86fcfb8b51249b5325a10dd93d193c52999cf6775d25030a4e606"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Pdb.pdb",
+        "Hash":  "0f8604853876a0355b9c855c22db2b9f6b96fb88eec0aa03c46d066b5c8a2b6b"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Rocks.dll",
+        "Hash":  "842e09959084eda733aab1a5354d7af79e29594f4d8b91c8792103e5c755ed9b"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Rocks.pdb",
+        "Hash":  "a186e51e8edda92120f1778866b3ee80d593ea2b66a0ce1bd47b48770e428fd6"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.dll",
+        "Hash":  "831dca77470d85cb6ffbea3072daa7a3df5b7c9fcfd9c3f43674a9be99d4bfcf"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Mdb.dll",
+        "Hash":  "28cb367972bdc1cd43e4006306af2fd96d37f4ed4b239ee90e1dc7237a93af7f"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Mdb.pdb",
+        "Hash":  "9c88cc698ab316e11da8fe30cee747cfa1688220b4bdef9946551119b9a2307f"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.pdb",
+        "Hash":  "31dbff5e4be7afb7ec5c5b0fb0f09dac5b2581cb3600454c5f0ec2cac72f7ed9"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Pdb.dll",
+        "Hash":  "a332332633fbcb20e8d50e49b4db7bd1557721417122cf0c5f4c42f2332391d0"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Pdb.pdb",
+        "Hash":  "06eb41fcda567c45a85a4774a8a8635cf8f2b2ec045e5ba520408ef3716beb57"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Rocks.dll",
+        "Hash":  "bf992f3dce364ebcc3200fa7832ef07e20b4e2dbc3a8a6213ce44e3d239db984"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Rocks.pdb",
+        "Hash":  "fa772d557e18329108a6e42fb71046c12556323ef4a836e33628ee2b9a5143a3"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\package\\services\\metadata\\core-properties\\e640a21b23dc4c169ccb9223a09c4bae.psmdcp",
+        "Hash":  "347d629e2f5173a2336ef8bb44eaafabb06b7748036bf4d830959ef4d784f391"
+    },
+    {
+        "Path":  "RandomMusic\\Tools\\Mono.Cecil.0.11.6\\_rels\\.rels",
+        "Hash":  "1aa7b08def877ea03c7c7fc194a73bdfbe5c854d117ce6de8aa04591f9d38127"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\install-manifest.json",
+        "Hash":  "d4f1ededd72ee99ac97ed6f955eee1f948bc973a4f4782e040b47212479e6ace"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Backup\\Crystal Project.exe.1.6.9.original",
+        "Hash":  "36f7d413160a4deee36b47fc6ac534e87cadb6f23f57337d4630ec99cedb14e6"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6.nupkg",
+        "Hash":  "d2a23832aaa948ba9a01acc42b5726e34c5f995958f1b30d45c0e7c70b3a72d5"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\.signature.p7s",
+        "Hash":  "9692309a49a5fd80d26e250b4e2c2c6e35873f1397caead7cb997ce91d17d553"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\Mono.Cecil.nuspec",
+        "Hash":  "52fa41faa56134d176e8816347f040c01837d8c4458d43fef0166c27559d4bd9"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\[Content_Types].xml",
+        "Hash":  "abdd00f5935de1e02269c98a007a98fd67dc61223641b4566204f7f86781ea19"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.dll",
+        "Hash":  "c41bdb9ffd3c5f6e17d2382c1012d73703e035e3f1100245fdd4e08c8dc6eb5b"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Mdb.dll",
+        "Hash":  "570a437dea0271d1d5c8b7d6a408b0b2635bdb0e8b8d5051878f3e7fca087f89"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Mdb.pdb",
+        "Hash":  "66f96d1c188f913aad0192708aebfcc3c6e2c63fbdc6c5d842c80953e1df256f"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.pdb",
+        "Hash":  "7731a001867c86c2db9ea12ebd6994ac7e43c7fd75bf1b5ee4f877601ef0bc43"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Pdb.dll",
+        "Hash":  "50a1a1a79dc86fcfb8b51249b5325a10dd93d193c52999cf6775d25030a4e606"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Pdb.pdb",
+        "Hash":  "0f8604853876a0355b9c855c22db2b9f6b96fb88eec0aa03c46d066b5c8a2b6b"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Rocks.dll",
+        "Hash":  "842e09959084eda733aab1a5354d7af79e29594f4d8b91c8792103e5c755ed9b"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\net40\\Mono.Cecil.Rocks.pdb",
+        "Hash":  "a186e51e8edda92120f1778866b3ee80d593ea2b66a0ce1bd47b48770e428fd6"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.dll",
+        "Hash":  "831dca77470d85cb6ffbea3072daa7a3df5b7c9fcfd9c3f43674a9be99d4bfcf"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Mdb.dll",
+        "Hash":  "28cb367972bdc1cd43e4006306af2fd96d37f4ed4b239ee90e1dc7237a93af7f"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Mdb.pdb",
+        "Hash":  "9c88cc698ab316e11da8fe30cee747cfa1688220b4bdef9946551119b9a2307f"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.pdb",
+        "Hash":  "31dbff5e4be7afb7ec5c5b0fb0f09dac5b2581cb3600454c5f0ec2cac72f7ed9"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Pdb.dll",
+        "Hash":  "a332332633fbcb20e8d50e49b4db7bd1557721417122cf0c5f4c42f2332391d0"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Pdb.pdb",
+        "Hash":  "06eb41fcda567c45a85a4774a8a8635cf8f2b2ec045e5ba520408ef3716beb57"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Rocks.dll",
+        "Hash":  "bf992f3dce364ebcc3200fa7832ef07e20b4e2dbc3a8a6213ce44e3d239db984"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\lib\\netstandard2.0\\Mono.Cecil.Rocks.pdb",
+        "Hash":  "fa772d557e18329108a6e42fb71046c12556323ef4a836e33628ee2b9a5143a3"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\package\\services\\metadata\\core-properties\\e640a21b23dc4c169ccb9223a09c4bae.psmdcp",
+        "Hash":  "347d629e2f5173a2336ef8bb44eaafabb06b7748036bf4d830959ef4d784f391"
+    },
+    {
+        "Path":  "RandomMusicPrototype\\Tools\\Mono.Cecil.0.11.6\\_rels\\.rels",
+        "Hash":  "1aa7b08def877ea03c7c7fc194a73bdfbe5c854d117ce6de8aa04591f9d38127"
+    },
+    {
+        "Path":  "scripts\\Install.ps1",
+        "Hash":  "309fe3ee1058b205bb90ac0da8f40f8dcdb95345255c9b266fc7794e157aa615"
+    },
+    {
+        "Path":  "scripts\\Uninstall.ps1",
+        "Hash":  "f71444107b82f17e32f2c381439e8fdb6926d9968cb22b8c536a6d38507ddf28"
+    },
+    {
+        "Path":  "src\\Patcher.cs",
+        "Hash":  "d32af6d2c2d93a414751573b330a415b39522dcfe0d9662ddc65a9be7d0d5211"
+    }
+]

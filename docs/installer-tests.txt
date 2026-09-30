@@ -1,0 +1,32 @@
+PASS: Build/reload/unchanged methods and ALL constants: Selection { Music = False, Home = False }
+PASS: Build/reload/unchanged methods and ALL constants: Selection { Music = True, Home = False }
+PASS: Build/reload/unchanged methods and ALL constants: Selection { Music = False, Home = True }
+PASS: Build/reload/unchanged methods and ALL constants: Selection { Music = True, Home = True }
+PASS: Transition Selection { Music = False, Home = False } -> Selection { Music = False, Home = False }
+PASS: Transition Selection { Music = False, Home = False } -> Selection { Music = True, Home = False }
+PASS: Transition Selection { Music = False, Home = False } -> Selection { Music = False, Home = True }
+PASS: Transition Selection { Music = False, Home = False } -> Selection { Music = True, Home = True }
+PASS: Transition Selection { Music = True, Home = False } -> Selection { Music = False, Home = False }
+PASS: Transition Selection { Music = True, Home = False } -> Selection { Music = True, Home = False }
+PASS: Transition Selection { Music = True, Home = False } -> Selection { Music = False, Home = True }
+PASS: Transition Selection { Music = True, Home = False } -> Selection { Music = True, Home = True }
+PASS: Transition Selection { Music = False, Home = True } -> Selection { Music = False, Home = False }
+PASS: Transition Selection { Music = False, Home = True } -> Selection { Music = True, Home = False }
+PASS: Transition Selection { Music = False, Home = True } -> Selection { Music = False, Home = True }
+PASS: Transition Selection { Music = False, Home = True } -> Selection { Music = True, Home = True }
+PASS: Transition Selection { Music = True, Home = True } -> Selection { Music = False, Home = False }
+PASS: Transition Selection { Music = True, Home = True } -> Selection { Music = True, Home = False }
+PASS: Transition Selection { Music = True, Home = True } -> Selection { Music = False, Home = True }
+PASS: Transition Selection { Music = True, Home = True } -> Selection { Music = True, Home = True }
+PASS: External backup hash
+PASS: Unsupported hash (Your Crystal Project version is not yet supported. No game files have been changed.)
+PASS: Unsupported EXE untouched
+PASS: Corrupt canonical backup (The pristine backup is corrupt. It was not overwritten. Restore a verified backup or verify game files in Steam.)
+PASS: Corrupt-backup failure preserved live EXE
+PASS: Exclusive-lock/file access failure (The process cannot access the file 'C:\Games\CrystalProject-ModPack\artifacts\test-d0fb0368b98a44cbba76ab3586f97958\game\Crystal Project.exe' because it is being used by another process.)
+PASS: File-access failure preserved live EXE
+PASS: Interrupted pre-commit temp is ignored
+PASS: Interrupted commit rollback
+PASS: Missing original backup (No verified original exists. In Steam: Properties → Installed Files → Verify integrity of game files, then rerun this installer.)
+PASS: Known cleanup artifact archived then removed
+PASS: Unknown and changed artifacts preserved
