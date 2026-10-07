@@ -1,0 +1,26 @@
+<Window x:Class="CrystalProjectModManager.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Crystal Project Mod Manager" Width="1200" Height="800" MinWidth="880" MinHeight="620" WindowStartupLocation="CenterScreen" Background="#101D27" Foreground="#ECF3F4">
+ <Grid>
+  <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+  <Border Background="#142430" Padding="22,30"><DockPanel>
+   <StackPanel DockPanel.Dock="Top"><TextBlock Text="CRYSTAL PROJECT" Foreground="#65D6C0" FontSize="12" FontWeight="Bold"/><TextBlock Text="Mod Manager" FontSize="24" FontWeight="SemiBold" Margin="0,8,0,32"/>
+    <StackPanel x:Name="Navigation"/>
+   </StackPanel>
+   <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom"><TextBlock Text="0.1.0-rc1" Foreground="#A6BAC5"/><TextBlock Text="Development preview" Foreground="#A6BAC5" FontSize="12" Margin="0,6,0,0"/></StackPanel>
+  </DockPanel></Border>
+  <Grid Grid.Column="1" Margin="30,26,30,20">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <StackPanel Margin="0,0,0,22"><TextBlock x:Name="PageTitle" FontSize="30" FontWeight="SemiBold"/><TextBlock x:Name="PageSubtitle" Foreground="#A6BAC5" Margin="0,8,0,0"/></StackPanel>
+   <ContentControl x:Name="PageContent" Grid.Row="1"/>
+   <Border Grid.Row="2" Background="#192D39" CornerRadius="10" Padding="16" Margin="0,20,0,10">
+    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel><TextBlock x:Name="NowPlaying" Text="Preview your music" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Text, ElementName=NowPlaying}"/><TextBlock x:Name="PlaybackTime" Text="Select a track in Music to start listening." Foreground="#A6BAC5" FontSize="12" Margin="0,4,0,8"/></StackPanel>
+     <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="Previous" Content="Previous" Padding="10,7"/><Button x:Name="PlayPause" Content="Play" Padding="14,7"/><Button x:Name="Stop" Content="Stop" Padding="10,7"/><Button x:Name="Next" Content="Next" Padding="10,7"/></StackPanel>
+     <Slider x:Name="Seek" Grid.Row="1" Minimum="0" Maximum="1" Value="0" Margin="0,2,18,0" ToolTip="Seek preview"/>
+     <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal"><TextBlock Text="Volume" FontSize="12" Margin="0,0,8,0"/><Slider x:Name="Volume" Width="140" Minimum="0" Maximum="1" Value="0.65" ToolTip="Preview volume"/></StackPanel>
+    </Grid>
+   </Border>
+   <TextBlock x:Name="Status" Grid.Row="3" Text="Preparing your workspace…" Foreground="#A6BAC5"/>
+  </Grid>
+ </Grid>
+</Window>
