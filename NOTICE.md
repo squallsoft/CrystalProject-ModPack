@@ -1329,5 +1329,5 @@ https://github.com/SixLabors/ImageSharp/blob/f4f689ce67ecbcc35cebddba5aacb603e6d
 
 NAudio 2.2.1: Mark Heath and contributors. License text: docs/NAudio-LICENSE.txt (NAudio-LICENSE.txt in the portable package).
 
-NVorbis 0.10.5: Andrew Ward. License text: docs/NVorbis-LICENSE.txt (NVorbis-LICENSE.txt in the portable package).
+NVorbis 1.0.0-rc.2: Andrew Ward. License text: docs/NVorbis-LICENSE.txt (NVorbis-LICENSE.txt in the portable package).
 

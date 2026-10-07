@@ -60,6 +60,20 @@ using (var player = new PreviewPlayer())
     Refused(() => player.Open(invalid), "Invalid preview file handled"); Refused(() => player.Open(Path.Combine(root, "absent.ogg")), "Missing preview file handled");
 }
 Check(Patches.Hash(engine.Exe) == liveHash && MusicLibrary.Hash(runtimeConfig) == before, "Preview leaves deployed game untouched");
+if (args.Length > 1)
+{
+    // Optional user-owned regression input; never checked into the repository or package.
+    string regressionFile = Path.GetFullPath(args[1]), regressionHash = MusicLibrary.Hash(regressionFile);
+    var watch = System.Diagnostics.Stopwatch.StartNew(); var imported = library.Import(regressionFile);
+    Check(imported.Duration > 0 && watch.Elapsed < TimeSpan.FromSeconds(30) && MusicLibrary.Hash(regressionFile) == regressionHash, "Reported music file imports promptly without changing source");
+    using var preview = new PreviewPlayer(); preview.Volume = 0; preview.Open(library.TrackPath(imported.Id));
+    preview.Play(); Thread.Sleep(120); preview.Pause();
+    Check(preview.State == PlaybackState.Paused && preview.Position > TimeSpan.Zero, "Reported music file preview decodes and pauses");
+    preview.Seek(preview.Duration - TimeSpan.FromMilliseconds(10));
+    Check(preview.Position > preview.Duration - TimeSpan.FromMilliseconds(30), "Reported music file seeks near final page");
+    preview.Seek(preview.Duration); preview.Play(); Thread.Sleep(120); preview.Pause();
+    Check(preview.Position < TimeSpan.FromSeconds(1), "Reported music file restarts after EOF");
+}
 engine.Apply(new(false, true)); Check(engine.Inspect().Mods == new Selection(false, true), "Music off retains Home Points");
 engine.Apply(new(false, false)); Check(Patches.Hash(engine.Exe) == Patches.Original && File.Exists(managed), "Restore exact vanilla; retain imported library");
 File.WriteAllLines(Path.Combine(repo, "artifacts", "manager-tests.txt"), report);

@@ -6,6 +6,7 @@
 - Discovered all 71 music cues and seven ambience cues from the verified executable and installed config/biome data.
 - Added managed Vorbis library, content deduplication, missing-file repair, legacy-pool import, and configuration sharing without audio.
 - Added visible operation progress and per-file import progress, including audio validation, filenames, and total percentage for regular and legacy imports.
+- Updated the manager's NVorbis decoder to 1.0.0-rc.2 after reproducing a decoding hang with a user-owned normalized Ogg track; verified all 117 existing legacy tracks import. Added optional user-owned file regression coverage for import and preview.
 - Generalized random pools to actual queued playback starts with duplicate suppression and exact-file bookmarks.
 - Fixed original-music fallback, packed-file offsets, and untagged replacement loop bounds.
 - Composed music with the newer safe Home Points implementation; journaled music/configuration/helpers and executable together.
