@@ -10,6 +10,37 @@ var report = new List<string>();
 void Check(bool ok, string name) { if (!ok) throw new Exception("FAIL " + name); report.Add("PASS " + name); Console.WriteLine(report[^1]); }
 void Refused(Action action, string name) { try { action(); } catch { Check(true, name); return; } throw new Exception("FAIL did not refuse " + name); }
 var library = new MusicLibrary(Path.Combine(root, "data")); var config = new Configuration();
+var originalCue = MusicLibrary.Cues.Single(c => c.GameValue == 32);
+string originalGame = Path.Combine(root, "original-game"), originalAudio = Path.Combine(originalGame, "Content", "Audio"); Directory.CreateDirectory(originalAudio);
+File.WriteAllText(Path.Combine(originalAudio, "bgm.config"), $"MusicCue={originalCue.GameCue}\nPath=original.mp3\n");
+byte[] originalBytes = File.ReadAllBytes(Path.Combine(repo, "artifacts", "fixtures", "sine-original.mp3"));
+string originalArchive = Path.Combine(originalAudio, "bgm.dat");
+using (var writer = new BinaryWriter(File.Create(originalArchive)))
+{
+    writer.Write((byte)0); writer.Write(false); writer.Write(2); writer.Write(new byte[14]);
+    foreach (string name in new[] { "other.mp3", "original.mp3" }) { writer.Write(name.Length); writer.Write(name.ToCharArray()); writer.Write(originalBytes.Length); writer.Write(originalBytes); }
+}
+string archiveHash = MusicLibrary.Hash(originalArchive);
+using (var stream = OriginalMusic.Open(originalGame, originalCue))
+{
+    using var copy = new MemoryStream(); stream.CopyTo(copy);
+    Check(copy.ToArray().SequenceEqual(originalBytes) && stream.Length == originalBytes.Length && stream.ReadByte() == -1, "Original cue resolves exact archive segment with bounded EOF");
+    Refused(() => stream.Seek(1, SeekOrigin.End), "Original preview cannot seek beyond its track");
+    Refused(() => stream.WriteByte(1), "Original soundtrack stream is read-only");
+    stream.Position = 0;
+    using var player = new PreviewPlayer(); player.Volume = 0; player.OpenOriginal(stream, originalCue.Id); player.Play(); Thread.Sleep(120); player.Pause();
+    Check(player.State == PlaybackState.Paused && player.Position > TimeSpan.Zero && player.Duration.TotalSeconds > 1.9, "Original MP3 preview plays and pauses");
+    player.Seek(TimeSpan.FromSeconds(1)); Check(player.Position.TotalSeconds >= 0.9, "Original MP3 preview seeks");
+    player.Stop(); Check(player.Position == TimeSpan.Zero && player.State == PlaybackState.Stopped, "Original MP3 preview stops and resets");
+    player.Seek(player.Duration); player.Play(); Thread.Sleep(120); player.Pause(); Check(player.Position < TimeSpan.FromSeconds(1), "Original MP3 preview restarts after EOF");
+}
+Check(MusicLibrary.Hash(originalArchive) == archiveHash && !File.Exists(library.ConfigPath) && Directory.GetFiles(Path.Combine(library.Store, "Library")).Length == 0, "Original preview leaves archive, library, and assignments untouched");
+File.WriteAllText(Path.Combine(originalAudio, "bgm.config"), $"MusicCue={originalCue.GameCue}\nPath=../original.mp3\n");
+Refused(() => OriginalMusic.Open(originalGame, originalCue), "Original soundtrack path traversal refused");
+File.WriteAllText(Path.Combine(originalAudio, "bgm.config"), $"MusicCue={originalCue.GameCue}\nPath=missing.mp3\n");
+Refused(() => OriginalMusic.Open(originalGame, originalCue), "Missing original soundtrack is handled");
+using (var file = File.OpenWrite(originalArchive)) file.WriteByte(42);
+Refused(() => OriginalMusic.Open(originalGame, originalCue), "Unknown soundtrack archive version refused");
 Check(MusicLibrary.Cues.Count == 78 && MusicLibrary.Cues.Count(c => !c.IsAmbience) == 71, "Enum/config catalog coverage: 71 music + 7 ambience");
 string a = Path.Combine(repo, "artifacts", "fixtures", "sine-a.ogg"), b = Path.Combine(repo, "artifacts", "fixtures", "sine-b.ogg");
 string unicode = Path.Combine(root, "音楽 — " + new string('x', 120) + ".ogg"); File.Copy(a, unicode);
@@ -73,6 +104,16 @@ if (args.Length > 1)
     Check(preview.Position > preview.Duration - TimeSpan.FromMilliseconds(30), "Reported music file seeks near final page");
     preview.Seek(preview.Duration); preview.Play(); Thread.Sleep(120); preview.Pause();
     Check(preview.Position < TimeSpan.FromSeconds(1), "Reported music file restarts after EOF");
+}
+if (args.Length > 2)
+{
+    string installedGame = Path.GetFullPath(args[2]); int decoded = 0;
+    foreach (var entry in MusicLibrary.Cues)
+    {
+        using var stream = OriginalMusic.Open(installedGame, entry); using var mp3 = new Mp3FileReader(stream);
+        Check(mp3.Read(new byte[4096], 0, 4096) > 0, "Installed original soundtrack decodes: " + entry.GameCue); decoded++;
+    }
+    Check(decoded == 78, "Installed original preview covers all music and ambience cues");
 }
 engine.Apply(new(false, true)); Check(engine.Inspect().Mods == new Selection(false, true), "Music off retains Home Points");
 engine.Apply(new(false, false)); Check(Patches.Hash(engine.Exe) == Patches.Original && File.Exists(managed), "Restore exact vanilla; retain imported library");

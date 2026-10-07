@@ -48,6 +48,8 @@ Keep the game's built-in Random Music OFF for predictable per-cue assignments. W
 
 Select a track and **Play**, or double-click it. The bottom player pauses/resumes, stops, seeks, adjusts preview volume, and moves between tracks. Previewing does not modify deployed game files.
 
+Select a cue and choose **Preview Original** to hear its default game music or ambience. The same bottom player controls playback. Originals are read directly from your installed soundtrack; they are not imported into a replacement pool. Select your game folder in **Installation / Game** first. Previous/Next apply to replacement pools and are disabled during an original preview.
+
 **Remove** takes a track out of a pool. **Reset to Original** clears the pool. **Locate File** reconnects missing music using the same audio bytes; its filename may differ. A missing assigned file blocks Apply.
 
 Draft edits are saved automatically and reach the game only after **Apply Changes**. Disable all replacement music in Settings or clear individual pools to restore original music while keeping Home Points enabled.

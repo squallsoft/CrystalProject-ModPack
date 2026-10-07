@@ -13,13 +13,22 @@ internal sealed class PreviewPlayer : IDisposable
         public int Read(float[] buffer, int offset, int count) { lock (Gate) return End ? 0 : reader.ReadSamples(buffer, offset, count); }
     }
     VorbisReader? reader;
+    Mp3FileReader? original;
+    Stream? originalSource;
+    bool originalEnd;
+    readonly object originalGate = new();
+    sealed class LockedSamples(ISampleProvider source, object gate, Func<bool> ended) : ISampleProvider
+    {
+        public WaveFormat WaveFormat => source.WaveFormat;
+        public int Read(float[] buffer, int offset, int count) { lock (gate) return ended() ? 0 : source.Read(buffer, offset, count); }
+    }
     Samples? samples;
     WaveOutEvent? output;
     float volume = 0.65f;
     public string? FilePath { get; private set; }
     public PlaybackState State => output?.PlaybackState ?? PlaybackState.Stopped;
-    public TimeSpan Duration => reader?.TotalTime ?? TimeSpan.Zero;
-    public TimeSpan Position { get { if (reader == null || samples == null) return TimeSpan.Zero; lock (samples.Gate) return samples.End ? reader.TotalTime : reader.TimePosition; } }
+    public TimeSpan Duration => original?.TotalTime ?? reader?.TotalTime ?? TimeSpan.Zero;
+    public TimeSpan Position { get { if (original != null) { lock (originalGate) return originalEnd ? original.TotalTime : original.CurrentTime; } if (reader == null || samples == null) return TimeSpan.Zero; lock (samples.Gate) return samples.End ? reader.TotalTime : reader.TimePosition; } }
     public float Volume { get => volume; set { volume = Math.Clamp(value, 0, 1); if (output != null) output.Volume = volume; } }
     public event Action<Exception>? Error;
     public void Open(string path)
@@ -34,11 +43,32 @@ internal sealed class PreviewPlayer : IDisposable
         }
         catch { Dispose(); throw; }
     }
-    public void Play() { if (samples?.End == true || reader != null && reader.TotalSamples > 0 && reader.SamplePosition >= reader.TotalSamples - 1) Seek(TimeSpan.Zero); output?.Play(); }
+    public void OpenOriginal(Stream stream, string identity)
+    {
+        Dispose(); originalSource = stream;
+        try
+        {
+            original = new Mp3FileReader(stream);
+            output = new WaveOutEvent(); output.Init(new LockedSamples(original.ToSampleProvider(), originalGate, () => originalEnd).ToWaveProvider()); output.Volume = volume;
+            output.PlaybackStopped += (_, e) => { if (e.Exception != null) Error?.Invoke(e.Exception); };
+            FilePath = "original:" + identity;
+        }
+        catch { Dispose(); throw; }
+    }
+    public void Play() { if (original != null && (originalEnd || original.Position >= original.Length) || samples?.End == true || reader != null && reader.TotalSamples > 0 && reader.SamplePosition >= reader.TotalSamples - 1) Seek(TimeSpan.Zero); output?.Play(); }
     public void Pause() => output?.Pause();
     public void Stop() { output?.Stop(); Seek(TimeSpan.Zero); }
     public void Seek(TimeSpan position)
     {
+        if (original != null)
+        {
+            lock (originalGate)
+            {
+                originalEnd = position >= original.TotalTime;
+                if (!originalEnd) original.CurrentTime = TimeSpan.FromSeconds(Math.Clamp(position.TotalSeconds, 0, original.TotalTime.TotalSeconds));
+            }
+            return;
+        }
         if (reader == null || samples == null) return;
         lock (samples.Gate)
         {
@@ -62,5 +92,5 @@ internal sealed class PreviewPlayer : IDisposable
             }
         }
     }
-    public void Dispose() { output?.Dispose(); output = null; reader?.Dispose(); reader = null; samples = null; FilePath = null; }
+    public void Dispose() { output?.Dispose(); output = null; reader?.Dispose(); reader = null; samples = null; original?.Dispose(); original = null; originalSource?.Dispose(); originalSource = null; originalEnd = false; FilePath = null; }
 }

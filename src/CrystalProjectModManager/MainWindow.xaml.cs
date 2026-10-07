@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     bool busy, changingSeek, configLoaded;
     TrackRow[] previewPool = [];
     int previewIndex;
+    bool previewOriginal;
     readonly string? renderDirectory;
     static Brush Brush(string hex) => (Brush)new BrushConverter().ConvertFromString(hex)!;
     public MainWindow()
@@ -55,7 +56,7 @@ public partial class MainWindow : Window
             if (player.FilePath != null) PlaybackTime.Text = $"{player.Position:mm\\:ss} / {player.Duration:mm\\:ss}";
             PlayPause.Content = player.State == PlaybackState.Playing ? "Pause" : "Play";
             bool available = player.FilePath != null || trackList?.SelectedItem != null; PlayPause.IsEnabled = available; Stop.IsEnabled = player.FilePath != null; Seek.IsEnabled = player.FilePath != null;
-            Previous.IsEnabled = Next.IsEnabled = trackList?.Items.Count > 1 || previewPool.Length > 1;
+            Previous.IsEnabled = Next.IsEnabled = !previewOriginal && (trackList?.Items.Count > 1 || previewPool.Length > 1);
         };
         timer.Start();
         Closing += (_, e) => { if (busy) { e.Cancel = true; Status.Text = "Wait for the current operation to finish before closing."; } };
@@ -170,7 +171,8 @@ public partial class MainWindow : Window
         Grid.SetRow(trackList, 1); editor.Children.Add(trackList);
         var footer = Stack(Text(pool.Tracks.Count == 0 ? "Original music plays when this pool is empty." : "One track always plays. Multiple tracks randomize without immediate repeats.", 12, "#A6BAC5"),
             Actions(Button("Add Music", ChooseMusic, true), Button("Add Folder", ChooseFolder), Button("Play", () => PreviewAction(PlaySelected))),
-            Actions(Button("Remove", RemoveTrack), Button("Locate File", LocateTrack), Button("Reset to Original", () => { EditablePool().Tracks.Clear(); SaveDraft(); ShowPage("Music"); })));
+            Actions(Button("Remove", RemoveTrack), Button("Locate File", LocateTrack), Button("Reset to Original", () => { EditablePool().Tracks.Clear(); SaveDraft(); ShowPage("Music"); })),
+            Actions(Button("Preview Original", () => PreviewAction(PlayOriginal))));
         Grid.SetRow(footer, 2); editor.Children.Add(footer); var card = new Border { Child = editor, Background = Brush("#192834"), CornerRadius = new(10), Padding = new(20) }; Grid.SetColumn(card, 1); grid.Children.Add(card);
     }
     void ChooseMusic() { var d = new OpenFileDialog { Filter = "Ogg Vorbis music|*.ogg", Multiselect = true }; if (d.ShowDialog(this) == true) _ = AddTracks(d.FileNames); }
@@ -215,10 +217,19 @@ public partial class MainWindow : Window
     void PlayRow(TrackRow row)
     {
         string path = library.TrackPath(row.Id); if (!File.Exists(path)) throw new IOException("This music file is missing. Use Locate File or remove it from the pool.");
-        player.Open(path); player.Play(); NowPlaying.Text = row.Name;
+        player.Open(path); previewOriginal = false; player.Play(); NowPlaying.Text = row.Name;
+    }
+    void PlayOriginal()
+    {
+        var cue = currentCue; if (cue == null) return;
+        if (string.IsNullOrWhiteSpace(config.GamePath)) throw new IOException("Select your game folder in Installation / Game to preview original music.");
+        var stream = OriginalMusic.Open(config.GamePath, cue);
+        player.OpenOriginal(stream, cue.Id); previewOriginal = true; player.Play();
+        NowPlaying.Text = "Original · " + cue.OriginalTitle;
     }
     void MoveTrack(int direction)
     {
+        if (previewOriginal) return;
         if (trackList != null && trackList.Items.Count > 0) { trackList.SelectedIndex = (Math.Max(0, trackList.SelectedIndex) + direction + trackList.Items.Count) % trackList.Items.Count; PreviewAction(PlaySelected); }
         else if (previewPool.Length > 0) { previewIndex = (previewIndex + direction + previewPool.Length) % previewPool.Length; PreviewAction(() => PlayRow(previewPool[previewIndex])); }
     }

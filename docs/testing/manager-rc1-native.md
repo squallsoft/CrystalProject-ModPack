@@ -42,6 +42,7 @@ For every row test no replacement, one track, and three tracks. Listen through a
 ## Preview and UI
 
 - [ ] Play, pause, resume, stop, seek, previous, next, volume, natural end.
+- [ ] Preview Original on area, battle, title, victory, and ambience cues; pause/seek/stop/replay and volume work. Replacement pools stay unchanged. Switch back to a replacement preview and verify Previous/Next work again.
 - [ ] One-track and large pools, missing/invalid file, Unicode and long filenames.
 - [ ] Preview and editor changes do not modify deployed game files until Apply.
 - [ ] All seven pages at 100%, 150%, 200% Windows DPI, small screen, resized window.

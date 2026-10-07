@@ -1,8 +1,8 @@
-param([string]$Sdk)
+param([string]$Sdk, [string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 if (!$Sdk) { $Sdk = Join-Path $repo 'artifacts\dotnet\dotnet.exe'; if (!(Test-Path -LiteralPath $Sdk)) { $Sdk = 'dotnet' } }
-$output = Join-Path $repo 'artifacts\release\manager-0.1.0-rc1'
+$output = if ($OutputDirectory) { [System.IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repo 'artifacts\release\manager-0.1.0-rc1' }
 Push-Location $repo
 try {
     & $Sdk publish src\CrystalProjectModManager -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $output

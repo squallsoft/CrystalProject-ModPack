@@ -19,6 +19,8 @@ try {
     if ($LASTEXITCODE) { throw 'Fixture generation failed' }
     & $FFmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=660:duration=3' -metadata LOOPSTART=0.5 -metadata LOOPEND=2.5 -c:a libvorbis -q:a 5 -y artifacts\fixtures\sine-b.ogg
     if ($LASTEXITCODE) { throw 'Fixture generation failed' }
+    & $FFmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=330:duration=2' -c:a libmp3lame -y artifacts\fixtures\sine-original.mp3
+    if ($LASTEXITCODE) { throw 'Original-preview fixture generation failed' }
     & $Sdk build src\CrystalProjectModManager -c Release
     if ($LASTEXITCODE) { throw 'Manager build failed' }
     & $Sdk run --project tests -c Release -- $repo
