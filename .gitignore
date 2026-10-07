@@ -5,3 +5,14 @@ artifacts/
 *.dll
 *.log
 .local/
+*.ogg
+*.mp3
+*.wav
+*.flac
+*.sav
+*.save
+*.bson
+*.zip
+*.tmp
+**/Backups/
+**/backups/
