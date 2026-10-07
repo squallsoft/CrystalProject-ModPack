@@ -1,4 +1,5 @@
 using Mono.Cecil;
+using System.IO;
 using Mono.Cecil.Cil;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,6 +10,12 @@ internal static class Patches
 {
     public const string Original = "36f7d413160a4deee36b47fc6ac534e87cadb6f23f57337d4630ec99cedb14e6";
     public static readonly string[] Legacy = ["4f9d37b996268fd9de38ec49746474cb9531f2bcc3496ca5d13e43c2475138e7", "1768ff8268fc09f817c8109a43e683411f0f647bb7d74928c00f1a102a5a38f3", "65cfbba9ed7af1f0c7db110f85719fa695a92cc088873a157fa95d92fa720d79"];
+    public static readonly Dictionary<string, Selection> PreviousRelease = new()
+    {
+        ["50031fb3b88f942842f4d93a5eaea6af0d7acef444f278d11d9a94826936a7c9"] = new(true, false),
+        ["1d4b1e1c1be56dda9307907b7fef50c7ef9616c4c9f9ae3e35162fb6b3d393c5"] = new(false, true),
+        ["f6fb1be24074cd6a53abcafe0233b22da8a763fc1678b92c9a68d158067f5479"] = new(true, true)
+    };
     public static string Hash(string path) { using var s = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(s)).ToLowerInvariant(); }
     public static byte[] Resource(string name) { using var s = typeof(Patches).Assembly.GetManifestResourceStream(name) ?? throw new IOException("Missing resource " + name); using var m = new MemoryStream(); s.CopyTo(m); return m.ToArray(); }
     static IEnumerable<TypeDefinition> Types(IEnumerable<TypeDefinition> types) => types.SelectMany(t => new[] { t }.Concat(Types(t.NestedTypes)));
@@ -35,17 +42,24 @@ internal static class Patches
         {
             using var runtime = AssemblyDefinition.ReadAssembly(new MemoryStream(Resource("CrystalProjectRandomMusic.dll")));
             var rt = Type(runtime.MainModule, "CrystalProjectRandomMusic.Runtime");
-            var field = Type(module, "Sang.Field.FieldState");
-            foreach (var pair in new[] { ("GetBattleCue", "RandomizeBattleNullable"), ("GetFanfareCue", "RandomizeVictoryNullable") })
+            var manager = Type(module, "Sang.Audio.NAudio.NAudioMusicManager");
+            var update = Method(manager, "Update"); LongBranches(update);
+            if (update.Body.Instructions.Count(i => i.OpCode == OpCodes.Newobj && i.Operand is MethodReference r && r.DeclaringType.FullName == "Sang.Audio.NAudio.NAudioTrack") != 2) throw new InvalidOperationException("Unexpected music queue constructors.");
+            var gate = update.Body.Instructions.Single(i => i.OpCode == OpCodes.Ldfld && i.Operand is FieldReference f && f.Name == "_isNextTrackQueued").Previous;
+            if (gate.OpCode != OpCodes.Ldarg_0) throw new InvalidOperationException("Unexpected music queue gate.");
+            var firstHook = Instruction.Create(OpCodes.Ldarg_0);
+            var il = update.Body.GetILProcessor(); il.InsertBefore(gate, firstHook);
+            il.InsertBefore(gate, Instruction.Create(OpCodes.Call, module.ImportReference(Method(rt, "BeforeQueuedStart"))));
+            foreach (var i in update.Body.Instructions) if (ReferenceEquals(i.Operand, gate)) i.Operand = firstHook;
+            var saveBookmark = Method(manager, "SaveBookmark"); LongBranches(saveBookmark);
+            foreach (var ret in saveBookmark.Body.Instructions.Where(i => i.OpCode == OpCodes.Ret).ToArray())
             {
-                var m = Method(field, pair.Item1); LongBranches(m);
-                if (m.ReturnType is not GenericInstanceType g || g.ElementType.FullName != "System.Nullable`1") throw new InvalidOperationException("Unexpected music return type.");
-                var hook = new GenericInstanceMethod(module.ImportReference(Method(rt, pair.Item2)));
-                hook.GenericArguments.Add(module.ImportReference(g.GenericArguments[0]));
-                // Keep the certified wrapping strategy and runtime behavior.
-                foreach (var ret in m.Body.Instructions.Where(i => i.OpCode == OpCodes.Ret).ToArray())
-                    m.Body.GetILProcessor().InsertBefore(ret, Instruction.Create(OpCodes.Call, hook));
+                // Replace the return itself so branches targeting it execute the hook.
+                ret.OpCode = OpCodes.Ldarg_0; ret.Operand = null;
+                saveBookmark.Body.GetILProcessor().InsertAfter(ret, Instruction.Create(OpCodes.Call, module.ImportReference(Method(rt, "RememberBookmark"))));
+                saveBookmark.Body.GetILProcessor().InsertAfter(ret.Next, Instruction.Create(OpCodes.Ret));
             }
+            Prefix(Method(manager, "PlayBookmark"), Instruction.Create(OpCodes.Ldarg_0), Instruction.Create(OpCodes.Ldarg_1), Instruction.Create(OpCodes.Call, module.ImportReference(Method(rt, "ResumeBookmark"))));
         }
         if (home)
         {
@@ -104,7 +118,7 @@ internal static class Patches
         using var after = AssemblyDefinition.ReadAssembly(output);
         var a = Types(after.MainModule.Types).ToDictionary(t => t.FullName);
         var allowed = new HashSet<string>();
-        if (music) foreach (var n in new[] { "GetBattleCue", "GetFanfareCue" }) allowed.Add("Sang.Field.FieldState::" + n);
+        if (music) foreach (var n in new[] { "Update", "SaveBookmark", "PlayBookmark" }) allowed.Add("Sang.Audio.NAudio.NAudioMusicManager::" + n);
         if (home)
         {
             foreach (var n in new[] { "Sanitize", "Clear", "IsSet", "Get", "Set" }) allowed.Add("Sang.PartyData.HomePointCollection::" + n);

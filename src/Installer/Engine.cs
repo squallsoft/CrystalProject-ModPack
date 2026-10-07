@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
@@ -6,13 +7,13 @@ using System.Text;
 namespace CrystalProjectModInstaller;
 
 internal record Selection(bool Music, bool Home);
-internal record InstallRecord(string GamePath, string GameVersion, string OriginalSha256, string BackupSha256, string InstallerVersion, Selection Mods, string OutputSha256, DateTime Timestamp);
+internal record InstallRecord(string GamePath, string GameVersion, string OriginalSha256, string BackupSha256, string InstallerVersion, Selection Mods, string OutputSha256, DateTime Timestamp, Dictionary<string,string>? RuntimeHashes = null);
 internal record LegacyFile(string Path, string Hash);
 internal record TransactionFile(string Name, bool Existed, string BeforeHash, string AfterHash);
 internal record Journal(string GamePath, string Work, TransactionFile[] Files);
 internal sealed class Engine
 {
-    public const string Version = "0.1.0";
+    public const string Version = "0.1.0-rc1";
     public string Game { get; }
     public string Exe => Path.Combine(Game, "Crystal Project.exe");
     public string Store { get; }
@@ -23,8 +24,10 @@ internal sealed class Engine
     public string LogPath => Path.Combine(Store, "logs", Key + ".log");
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     static Dictionary<string, Selection>? supportedCache;
-    public Engine(string game, string? store = null)
+    readonly string? migrationBackup;
+    public Engine(string game, string? store = null, string? migrationBackup = null)
     {
+        this.migrationBackup = migrationBackup;
         Game = Path.GetFullPath(game).TrimEnd(Path.DirectorySeparatorChar);
         Store = store ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CrystalProjectModInstaller");
         foreach (var dir in new[] { "backups", "manifests", "logs", "work", "legacy" }) Directory.CreateDirectory(Path.Combine(Store, dir));
@@ -32,7 +35,16 @@ internal sealed class Engine
     public void Log(string text) => File.AppendAllText(LogPath, DateTime.UtcNow.ToString("O") + " " + text + Environment.NewLine);
     public void Idle()
     {
-        if (Process.GetProcessesByName("Crystal Project").Length != 0) throw new InvalidOperationException("Close Crystal Project completely before changing files.");
+        foreach (var process in Process.GetProcessesByName("Crystal Project"))
+        {
+            using (process)
+            {
+                string? running;
+                try { running = process.MainModule?.FileName; }
+                catch { throw new InvalidOperationException("Close Crystal Project completely before changing files."); }
+                if (running == null || string.Equals(Path.GetFullPath(running), Exe, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Crystal Project is currently running. Close the game and try again.");
+            }
+        }
     }
     static void CopyVerified(string source, string dest)
     {
@@ -49,11 +61,22 @@ internal sealed class Engine
     }
     static void AtomicCopy(string source, string dest)
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
         string temp = Path.Combine(Path.GetDirectoryName(dest)!, ".cpmi-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
             CopyVerified(source, temp);
-            if (File.Exists(dest)) File.Replace(temp, dest, null); else File.Move(temp, dest);
+            if (File.Exists(dest))
+            {
+                string before = Patches.Hash(dest);
+                for (int attempt = 0; ; attempt++)
+                {
+                    try { File.Replace(temp, dest, null); break; }
+                    catch (IOException e) when (attempt < 4 && (e.HResult & 0xffff) is 32 or 33 or 1175 && File.Exists(temp) && File.Exists(dest) && Patches.Hash(dest) == before)
+                    { Thread.Sleep(150); }
+                }
+            }
+            else File.Move(temp, dest);
             if (Patches.Hash(source) != Patches.Hash(dest)) throw new IOException("Replacement verification failed.");
         }
         finally { if (File.Exists(temp)) File.Delete(temp); }
@@ -69,7 +92,7 @@ internal sealed class Engine
             if (Patches.Hash(Backup) != Patches.Original) throw new IOException("The pristine backup is corrupt. It was not overwritten. Restore a verified backup or verify game files in Steam.");
             return Backup;
         }
-        foreach (string candidate in new[] { Exe, Path.Combine(Game, "RandomMusic", "Backup", "Crystal Project.exe.1.6.9.original"), Path.Combine(Game, "RandomMusicPrototype", "Backup", "Crystal Project.exe.1.6.9.original") })
+        foreach (string candidate in new[] { Exe, migrationBackup ?? "", Path.Combine(Game, "RandomMusic", "Backup", "Crystal Project.exe.1.6.9.original"), Path.Combine(Game, "RandomMusicPrototype", "Backup", "Crystal Project.exe.1.6.9.original") })
             if (File.Exists(candidate) && Patches.Hash(candidate) == Patches.Original) return candidate;
         return null;
     }
@@ -93,6 +116,7 @@ internal sealed class Engine
         if (hash == Patches.Original) return ("Vanilla · 1.6.9.0", new(false, false));
         if (hash == Patches.Legacy[2]) return ("Failed legacy Home Points build — repair recommended", new(true, true));
         if (Patches.Legacy.Contains(hash)) return ("Legacy Random Music", new(true, false));
+        if (Patches.PreviousRelease.TryGetValue(hash, out var previous)) return ("Previous installer release · 1.6.9.0", previous);
         string? original = FindOriginal();
         if (original != null)
         {
@@ -111,8 +135,9 @@ internal sealed class Engine
         var allowed = new[] { "Crystal Project.exe", "CrystalProjectRandomMusic.dll", "CrystalProjectHomePoints.dll", "manifest.json" };
         foreach (var f in j.Files)
         {
-            if (!allowed.Contains(f.Name)) throw new IOException("Invalid recovery file.");
+            if (!allowed.Contains(f.Name) && !RuntimeName(f.Name)) throw new IOException("Invalid recovery file.");
             string live = f.Name == "manifest.json" ? Manifest : Path.Combine(Game, f.Name);
+            if (f.Name != "manifest.json") SafeTarget(f.Name);
             string current = File.Exists(live) ? Patches.Hash(live) : "";
             if (current != f.BeforeHash && current != f.AfterHash) throw new IOException("Recovery found an externally changed file; leaving it untouched: " + live);
             if (f.Existed && Patches.Hash(Path.Combine(j.Work, "before", f.Name)) != f.BeforeHash) throw new IOException("Recovery backup is corrupt.");
@@ -126,16 +151,27 @@ internal sealed class Engine
         }
         File.Delete(JournalPath); Log("Rolled back interrupted transaction " + j.Work);
     }
-    public void Apply(Selection selection)
+    public void Apply(Selection selection, Dictionary<string,string>? runtimeAssets = null, IProgress<string>? progress = null, bool repairManagedFiles = false)
     {
         using var mutex = new Mutex(false, "Local\\CrystalProjectModInstaller-" + Key);
         bool locked; try { locked = mutex.WaitOne(0); } catch (AbandonedMutexException) { locked = true; }
         if (!locked) throw new IOException("Another installer operation is active.");
-        try { ApplyCore(selection); } catch (Exception e) { Log(e.ToString()); throw; } finally { mutex.ReleaseMutex(); }
+        try { ApplyCore(selection, runtimeAssets, progress, repairManagedFiles); } catch (Exception e) { Log(e.ToString()); throw; } finally { mutex.ReleaseMutex(); }
     }
-    void ApplyCore(Selection selection)
+    static bool RuntimeName(string name) => name == "Mods/CrystalProjectModManager/config.json" || System.Text.RegularExpressions.Regex.IsMatch(name, "^Mods/CrystalProjectModManager/Music/[a-f0-9]{64}\\.ogg$");
+    void SafeTarget(string name)
     {
+        string target = Path.GetFullPath(Path.Combine(Game, name));
+        if (!target.StartsWith(Game + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid deployment path.");
+        for (string? p = target; p != null && p.Length > Game.Length; p = Path.GetDirectoryName(p))
+            if ((File.Exists(p) || Directory.Exists(p)) && (File.GetAttributes(p) & FileAttributes.ReparsePoint) != 0) throw new IOException("A managed deployment path is a link. No linked files will be changed.");
+    }
+    static bool KnownHelper(string name, string hash) => hash == Convert.ToHexString(SHA256.HashData(Patches.Resource(name))).ToLowerInvariant() || (name == "CrystalProjectRandomMusic.dll" && (hash == LegacyRuntimeHash || hash == "e54d32438d0e266d8559a07816f68989096196c0cafea248a74b0458d7b412d8")) || (name == "CrystalProjectHomePoints.dll" && hash == "997d7be54518622a8047feb6a8c66ff77bbae4da348cab7d88dc7b9909bedbdd");
+    void ApplyCore(Selection selection, Dictionary<string,string>? runtimeAssets, IProgress<string>? progress, bool repairManagedFiles)
+    {
+        progress?.Report("Preparing");
         Idle(); Recover();
+        progress?.Report("Validating Crystal Project");
         if ((File.GetAttributes(Exe) & FileAttributes.ReadOnly) != 0) throw new IOException("Game executable is read-only. No game files have been changed.");
         string current = Patches.Hash(Exe);
         string? original = FindOriginal();
@@ -144,53 +180,81 @@ internal sealed class Engine
         try
         {
             var supported = Supported(original, work);
-            if (!supported.ContainsKey(current) && !Patches.Legacy.Contains(current)) throw new IOException("Your Crystal Project version is not yet supported. No game files have been changed.");
+            if (!supported.ContainsKey(current) && !Patches.Legacy.Contains(current) && !Patches.PreviousRelease.ContainsKey(current)) throw new IOException("Your Crystal Project version is not yet supported. No game files have been changed.");
             if (!File.Exists(Backup)) CopyVerified(original, Backup);
             var after = Path.Combine(work, "after"); Directory.CreateDirectory(after);
             var output = Path.Combine(after, "Crystal Project.exe");
             Patches.Build(Backup, output, selection.Music, selection.Home);
             var files = new List<TransactionFile>();
+            var runtimeHashes = new Dictionary<string,string>(Record()?.RuntimeHashes ?? []);
+            progress?.Report("Preparing music");
+            foreach (var asset in runtimeAssets ?? [])
+            {
+                if (!RuntimeName(asset.Key)) throw new IOException("Invalid managed music destination.");
+                SafeTarget(asset.Key); string target = Path.Combine(Game, asset.Key);
+                string hash = Patches.Hash(asset.Value);
+                if (asset.Key.EndsWith(".ogg") && Path.GetFileNameWithoutExtension(asset.Key) != hash) throw new IOException("Music asset hash mismatch.");
+                if (File.Exists(target))
+                {
+                    string liveHash = Patches.Hash(target);
+                    if (liveHash != hash && (!runtimeHashes.TryGetValue(asset.Key, out var recorded) || (liveHash != recorded && !repairManagedFiles))) throw new IOException("An unrecognized managed file will not be overwritten: " + Path.GetFileName(target));
+                }
+                string staged = Path.Combine(after, asset.Key); CopyVerified(asset.Value, staged);
+                files.Add(Snapshot(asset.Key, target, staged, work)); runtimeHashes[asset.Key] = hash;
+                if (asset.Key.EndsWith("config.json")) CopyVerified(staged, Path.Combine(Store, "runtime", hash + ".json"));
+            }
+            progress?.Report("Building configuration");
             foreach (var rt in new[] { (selection.Music, "CrystalProjectRandomMusic.dll"), (selection.Home, "CrystalProjectHomePoints.dll") })
             {
                 string target = Path.Combine(Game, rt.Item2);
-                if (!rt.Item1) continue; // unused helpers are removed below only with verified provenance
+                SafeTarget(rt.Item2);
+                if (!rt.Item1)
+                {
+                    if (File.Exists(target) && KnownHelper(rt.Item2, Patches.Hash(target))) files.Add(Snapshot(rt.Item2, target, null, work));
+                    continue;
+                }
                 File.WriteAllBytes(Path.Combine(after, rt.Item2), Patches.Resource(rt.Item2));
-                if (File.Exists(target) && Patches.Hash(target) != Patches.Hash(Path.Combine(after, rt.Item2)) && !(rt.Item2 == "CrystalProjectRandomMusic.dll" && Patches.Hash(target) == LegacyRuntimeHash))
+                if (File.Exists(target) && !KnownHelper(rt.Item2, Patches.Hash(target)))
                     throw new IOException("Unrecognized runtime DLL; it will not be overwritten: " + target);
                 files.Add(Snapshot(rt.Item2, target, Path.Combine(after, rt.Item2), work));
             }
             files.Add(Snapshot("Crystal Project.exe", Exe, output, work));
-            var record = new InstallRecord(Game, "1.6.9.0", Patches.Original, Patches.Hash(Backup), Version, selection, Patches.Hash(output), DateTime.UtcNow);
+            var record = new InstallRecord(Game, "1.6.9.0", Patches.Original, Patches.Hash(Backup), Version, selection, Patches.Hash(output), DateTime.UtcNow, runtimeHashes);
             File.WriteAllText(Path.Combine(after, "manifest.json"), JsonSerializer.Serialize(record, Json));
             files.Add(Snapshot("manifest.json", Manifest, Path.Combine(after, "manifest.json"), work));
             Idle(); if (Patches.Hash(Exe) != current) throw new IOException("Game changed during patching.");
             AtomicBytes(JournalPath, JsonSerializer.SerializeToUtf8Bytes(new Journal(Game, work, files.ToArray()), Json));
             try
             {
-                foreach (var f in files) AtomicCopy(Path.Combine(after, f.Name), f.Name == "manifest.json" ? Manifest : Path.Combine(Game, f.Name));
+                progress?.Report("Applying game patch");
+                foreach (var f in files)
+                {
+                    string target = f.Name == "manifest.json" ? Manifest : Path.Combine(Game, f.Name);
+                    if (f.Name != "manifest.json") SafeTarget(f.Name);
+                    if ((File.Exists(target) ? Patches.Hash(target) : "") != f.BeforeHash) throw new IOException("A deployment file changed during installation.");
+                    if (f.BeforeHash == f.AfterHash) continue;
+                    if (f.AfterHash == "") File.Delete(target); else AtomicCopy(Path.Combine(after, f.Name), target);
+                }
+                progress?.Report("Verifying installation");
+                foreach (var f in files)
+                {
+                    string target = f.Name == "manifest.json" ? Manifest : Path.Combine(Game, f.Name);
+                    if ((File.Exists(target) ? Patches.Hash(target) : "") != f.AfterHash) throw new IOException("Installation verification failed.");
+                }
                 File.Delete(JournalPath);
                 Log("Applied " + JsonSerializer.Serialize(record));
+                progress?.Report("Complete");
             }
             catch { Recover(); throw; }
-            foreach (var rt in new[] { (selection.Music, "CrystalProjectRandomMusic.dll"), (selection.Home, "CrystalProjectHomePoints.dll") })
-            {
-                string target = Path.Combine(Game, rt.Item2);
-                if (!rt.Item1 && File.Exists(target))
-                {
-                    string hash = Patches.Hash(target);
-                    string own = Convert.ToHexString(SHA256.HashData(Patches.Resource(rt.Item2))).ToLowerInvariant();
-                    if (hash == own || (rt.Item2 == "CrystalProjectRandomMusic.dll" && hash == LegacyRuntimeHash)) File.Delete(target);
-                }
-            }
         }
         finally { if (!File.Exists(JournalPath)) Directory.Delete(work, true); }
     }
     public static string LegacyRuntimeHash = "1eceede1152ef86f93d8e9e25047c24d11357b1e639df3c40c69d8e99733d64f";
-    static TransactionFile Snapshot(string name, string live, string after, string work)
+    static TransactionFile Snapshot(string name, string live, string? after, string work)
     {
         bool exists = File.Exists(live);
         if (exists) CopyVerified(live, Path.Combine(work, "before", name));
-        return new(name, exists, exists ? Patches.Hash(live) : "", Patches.Hash(after));
+        return new(name, exists, exists ? Patches.Hash(live) : "", after == null ? "" : Patches.Hash(after));
     }
     public string CleanLegacy()
     {

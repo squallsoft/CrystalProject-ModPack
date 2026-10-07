@@ -9,7 +9,7 @@ using System.Text;
 
 namespace CrystalProjectRandomMusic
 {
-    public static class Runtime
+    public static partial class Runtime
     {
         private static readonly object Gate = new object();
         private static readonly Random Rng = new Random();
@@ -427,6 +427,11 @@ namespace CrystalProjectRandomMusic
 
             string playStartMember;
             SetMember(track, new string[] { "PlayStart", "playStart" }, 0.0, out playStartMember);
+
+            string ignored;
+            SetMember(track, new string[] { "DatOffset" }, 0, out ignored);
+            SetMember(track, new string[] { "DatLength" }, 0, out ignored);
+            SetMember(track, new string[] { "Volume" }, 1.0f, out ignored);
 
             string loopStartMember;
             string loopEndMember;

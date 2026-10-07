@@ -22,7 +22,7 @@ if (args.Length > 1 && args[1] == "failure-extra")
     File.Copy(Path.Combine(AppContext.BaseDirectory, "Tests.exe"), host, true);
     using (var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(host, "--hold") { UseShellExecute = false, CreateNoWindow = true })!)
     {
-        try { Refused(() => engine.Apply(new(true, true)), "Running game process"); Check(Patches.Hash(engine.Exe) == Patches.Original, "Running-process refusal leaves EXE intact"); }
+        try { Refused(() => new Engine(AppContext.BaseDirectory, Path.Combine(test, "process-store")).Idle(), "Running game process in selected installation"); Check(Patches.Hash(engine.Exe) == Patches.Original, "Running-process refusal leaves EXE intact"); }
         finally { child.Kill(); child.WaitForExit(); }
     }
     File.Delete(host);
