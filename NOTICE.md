@@ -1324,3 +1324,10 @@ Licensed under the Apache License, Version 2.0.
 Available at
 https://github.com/SixLabors/ImageSharp/blob/f4f689ce67ecbcc35cebddba5aacb603e6d1068a/LICENSE
 
+
+## Mod Manager audio dependencies
+
+NAudio 2.2.1: Mark Heath and contributors. License text: docs/NAudio-LICENSE.txt (NAudio-LICENSE.txt in the portable package).
+
+NVorbis 0.10.5: Andrew Ward. License text: docs/NVorbis-LICENSE.txt (NVorbis-LICENSE.txt in the portable package).
+

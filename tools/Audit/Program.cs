@@ -28,6 +28,14 @@ foreach (var line in File.ReadLines(audioPath))
 }
 if (entries.Count != values.Count || entries.Select(e => e["Cue"]).Distinct().Count() != values.Count || entries.Any(e => !values.ContainsKey(e["Cue"]))) throw new InvalidDataException("Cue/config coverage mismatch.");
 string Words(string name) => Regex.Replace(Regex.Replace(name, @"^Z\d+_", ""), @"(?<=[a-z])(?=[A-Z])", " ");
+var friendly = new Dictionary<string,string>
+{
+    ["Battle1"] = "Normal Battle", ["Battle2"] = "Advanced Battle", ["Battle3"] = "Expert Battle",
+    ["Boss1"] = "Boss Battle", ["Boss2"] = "Advanced Boss Battle", ["Boss3"] = "Expert Boss Battle",
+    ["BattleDungeon1"] = "Dungeon Battle", ["BattleDungeon2"] = "Advanced Dungeon Battle", ["BattleDungeon3"] = "Expert Dungeon Battle",
+    ["BattleFinal"] = "Final Battle", ["BattleAngelo"] = "EX Battle", ["BossDepths"] = "Depths Battle", ["BattleMountain"] = "Mountain Battle",
+    ["Fanfare"] = "Victory", ["FanfareBoss"] = "Boss Triumph", ["FanfarePvp"] = "Rival Victory", ["BattlePvp"] = "Rival Battle"
+};
 var catalog = entries.Select(e => {
     string name = e["Cue"]; int number = values[name];
     var usage = new List<string>();
@@ -40,7 +48,9 @@ var catalog = entries.Select(e => {
     }
     bool ambience = e["Kind"] == "AmbienceCue";
     string category = ambience ? "Ambience" : name.StartsWith("Fanfare") ? "Victory" : name.StartsWith("Boss") || name is "BattleFinal" or "BattleAngelo" ? "Boss" : name.StartsWith("Battle") ? "Battle" : name.StartsWith("Narration") || name is "Credits" or "RivalsTheme" or "QuintarTheme" ? "Events" : name.StartsWith("Z") ? "Areas" : "Other";
-    string display = name == "Z1_SpawningMeadows" && usage.Any(x => x.StartsWith("Proving Grounds")) ? "Proving Grounds / Spawning Meadows" : Words(name);
+    string display = friendly.GetValueOrDefault(name, Words(name));
+    if (name.StartsWith("Z") && usage.Count > 0) display = usage[0][..usage[0].LastIndexOf(" (", StringComparison.Ordinal)];
+    if (name == "Z1_SpawningMeadows") display = "Spawning Meadows / Proving Meadows";
     return new { id = Regex.Replace(name, @"(?<=[a-z0-9])(?=[A-Z])", "_").ToLowerInvariant(), displayName = display, gameCue = name, gameValue = number, category, originalTitle = e.GetValueOrDefault("Title", ""), usage, isAmbience = ambience, notes = "Shared cue: assignments apply everywhere this cue is used. Native validation pending." };
 }).OrderBy(e => e.gameValue).ToArray();
 Directory.CreateDirectory(Path.Combine(args[2], "src", "Music"));

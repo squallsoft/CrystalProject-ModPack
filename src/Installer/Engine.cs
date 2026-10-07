@@ -129,6 +129,13 @@ internal sealed class Engine
     string NewWork() { string path = Path.Combine(Store, "work", Guid.NewGuid().ToString("N")); Directory.CreateDirectory(path); return path; }
     public void Recover()
     {
+        using var mutex = new Mutex(false, "Local\\CrystalProjectModInstaller-" + Key);
+        bool locked; try { locked = mutex.WaitOne(0); } catch (AbandonedMutexException) { locked = true; }
+        if (!locked) throw new IOException("Another installer operation is active.");
+        try { RecoverCore(); } finally { mutex.ReleaseMutex(); }
+    }
+    void RecoverCore()
+    {
         Idle(); if (!File.Exists(JournalPath)) return;
         var j = JsonSerializer.Deserialize<Journal>(File.ReadAllText(JournalPath)) ?? throw new IOException("Invalid recovery journal.");
         if (j.GamePath != Game || !Path.GetFullPath(j.Work).StartsWith(Path.Combine(Store, "work") + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid recovery location.");
@@ -171,6 +178,7 @@ internal sealed class Engine
     {
         progress?.Report("Preparing");
         Idle(); Recover();
+        SafeTarget("Crystal Project.exe");
         progress?.Report("Validating Crystal Project");
         if ((File.GetAttributes(Exe) & FileAttributes.ReadOnly) != 0) throw new IOException("Game executable is read-only. No game files have been changed.");
         string current = Patches.Hash(Exe);
@@ -258,6 +266,13 @@ internal sealed class Engine
     }
     public string CleanLegacy()
     {
+        using var mutex = new Mutex(false, "Local\\CrystalProjectModInstaller-" + Key);
+        bool locked; try { locked = mutex.WaitOne(0); } catch (AbandonedMutexException) { locked = true; }
+        if (!locked) throw new IOException("Another installer operation is active.");
+        try { return CleanLegacyCore(); } finally { mutex.ReleaseMutex(); }
+    }
+    string CleanLegacyCore()
+    {
         Idle();
         if (File.Exists(JournalPath)) throw new IOException("Repair the interrupted transaction before cleanup.");
         var state = Inspect(); if (state.Mods == null || state.Status.StartsWith("Failed")) throw new IOException("Apply or restore a supported configuration before cleanup.");
@@ -271,6 +286,7 @@ internal sealed class Engine
         {
             string path = Path.GetFullPath(Path.Combine(Game, f.Path));
             if (!path.StartsWith(Game + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid cleanup path.");
+            try { SafeTarget(f.Path); } catch (IOException) { report.Add("PRESERVED linked path: " + f.Path); continue; }
             if (!File.Exists(path)) continue;
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0 || Patches.Hash(path) != f.Hash) { report.Add("PRESERVED unknown/changed: " + f.Path); continue; }
             CopyVerified(path, Path.Combine(archive, f.Path)); verified.Add(f); report.Add("ARCHIVED; eligible for removal: " + f.Path);
@@ -278,6 +294,7 @@ internal sealed class Engine
         File.WriteAllLines(Path.Combine(archive, "cleanup-report.txt"), report);
         foreach (var f in verified)
         {
+            Idle(); SafeTarget(f.Path);
             string path = Path.Combine(Game, f.Path);
             if (Patches.Hash(path) != f.Hash) throw new IOException("Cleanup source changed: " + path);
             File.Delete(path);

@@ -7,7 +7,7 @@
   {
     "Music": true,
     "Home": false,
-    "Sha256": "98641591d78eec89d63a734ffc4195abb945305d898025850914a28a35ed1b57"
+    "Sha256": "50031fb3b88f942842f4d93a5eaea6af0d7acef444f278d11d9a94826936a7c9"
   },
   {
     "Music": false,
@@ -17,6 +17,6 @@
   {
     "Music": true,
     "Home": true,
-    "Sha256": "3e5e72a15d24f49be7e8dbd0cb7088f34532d3d436e78093303e9dcc03a611d6"
+    "Sha256": "f6fb1be24074cd6a53abcafe0233b22da8a763fc1678b92c9a68d158067f5479"
   }
 ]

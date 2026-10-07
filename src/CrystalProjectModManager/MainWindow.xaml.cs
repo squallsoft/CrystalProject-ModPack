@@ -28,6 +28,8 @@ public partial class MainWindow : Window
     ComboBox? category;
     CheckBox? replacedOnly;
     bool busy, changingSeek, configLoaded;
+    TrackRow[] previewPool = [];
+    int previewIndex;
     readonly string? renderDirectory;
     static Brush Brush(string hex) => (Brush)new BrushConverter().ConvertFromString(hex)!;
     public MainWindow()
@@ -53,7 +55,7 @@ public partial class MainWindow : Window
             if (player.FilePath != null) PlaybackTime.Text = $"{player.Position:mm\\:ss} / {player.Duration:mm\\:ss}";
             PlayPause.Content = player.State == PlaybackState.Playing ? "Pause" : "Play";
             bool available = player.FilePath != null || trackList?.SelectedItem != null; PlayPause.IsEnabled = available; Stop.IsEnabled = player.FilePath != null; Seek.IsEnabled = player.FilePath != null;
-            Previous.IsEnabled = Next.IsEnabled = trackList?.Items.Count > 1;
+            Previous.IsEnabled = Next.IsEnabled = trackList?.Items.Count > 1 || previewPool.Length > 1;
         };
         timer.Start();
         Closing += (_, e) => { if (busy) { e.Cancel = true; Status.Text = "Wait for the current operation to finish before closing."; } };
@@ -94,7 +96,7 @@ public partial class MainWindow : Window
         foreach (Button b in Navigation.Children) b.Background = Brush((string)b.Tag == name ? "#28514F" : "#142430");
         PageSubtitle.Text = name switch { "Music" => "Make the soundtrack your own. Single tracks or random pools, for every cue.", "Home" => "Your game, your soundtrack, your destinations.", "Home Points" => "More places to return to, with the game's Enhanced Home Point option.", "Backups & Repair" => "Verified originals and recovery, kept outside your Steam installation.", _ => "Crystal Project Mod Manager · Development preview" };
         UIElement content = name switch { "Home" => HomePage(), "Music" => MusicPage(), "Home Points" => HomePointPage(), "Installation / Game" => GamePage(), "Backups & Repair" => BackupPage(), "Settings" => SettingsPage(), _ => AboutPage() };
-        PageContent.Content = name == "Music" ? content : new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        PageContent.Content = name == "Music" && ActualHeight >= 700 ? content : new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Status.Text = "Changes are saved as a draft. Apply Changes updates the game.";
     }
     UIElement HomePage()
@@ -120,16 +122,17 @@ public partial class MainWindow : Window
     sealed record TrackRow(string Id, string Name, string Detail);
     UIElement MusicPage()
     {
-        var grid = new Grid(); grid.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); grid.ColumnDefinitions.Add(new() { Width = new(1.1, GridUnitType.Star) });
+        var grid = new Grid { Height = ActualHeight < 700 ? 530 : double.NaN }; grid.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); grid.ColumnDefinitions.Add(new() { Width = new(1.1, GridUnitType.Star) });
         var left = new Grid { Margin = new(0, 0, 18, 0) }; left.RowDefinitions.Add(new() { Height = GridLength.Auto }); left.RowDefinitions.Add(new() { Height = GridLength.Auto }); left.RowDefinitions.Add(new());
         search = new() { Text = "", ToolTip = "Search cue names, areas, original titles, or identifiers", Margin = new(0, 0, 0, 10) }; search.TextChanged += (_, _) => FilterCues();
         category = new() { ItemsSource = new[] { "All", "Areas", "Battle", "Boss", "Victory", "Events", "Other", "Ambience" }, SelectedIndex = 0, MinWidth = 130 }; category.SelectionChanged += (_, _) => FilterCues();
         replacedOnly = new() { Content = "Replaced only", FontSize = 13, Margin = new(4, 8, 0, 8) }; replacedOnly.Checked += (_, _) => FilterCues(); replacedOnly.Unchecked += (_, _) => FilterCues();
         var filters = Actions(category, replacedOnly); Grid.SetRow(filters, 1);
-        cueList = new() { ItemTemplate = CueTemplate() }; cueList.SelectionChanged += (_, _) => { if (cueList.SelectedItem is CueRow row) { currentCue = row.Cue; UpdatePoolEditor(grid); } }; Grid.SetRow(cueList, 2);
+        cueList = new() { ItemTemplate = CueTemplate() }; cueList.SelectionChanged += (_, _) => { currentCue = (cueList.SelectedItem as CueRow)?.Cue; UpdatePoolEditor(grid); }; Grid.SetRow(cueList, 2);
         left.Children.Add(search); left.Children.Add(filters); left.Children.Add(cueList); grid.Children.Add(left);
         FilterCues();
         if (cueList.Items.Count > 0) cueList.SelectedItem = cueList.Items.Cast<CueRow>().FirstOrDefault(x => x.Cue.Id == currentCue?.Id) ?? cueList.Items[0];
+        if (cueList.SelectedItem != null) cueList.ScrollIntoView(cueList.SelectedItem);
         if (currentCue == null) UpdatePoolEditor(grid);
         return grid;
     }
@@ -154,7 +157,7 @@ public partial class MainWindow : Window
     {
         if (grid.Children.Count > 1) grid.Children.RemoveAt(1);
         var editor = new Grid(); editor.RowDefinitions.Add(new() { Height = GridLength.Auto }); editor.RowDefinitions.Add(new()); editor.RowDefinitions.Add(new() { Height = GridLength.Auto });
-        if (currentCue == null) { var empty = Card(Text("Select a cue to edit its music pool.")); Grid.SetColumn(empty, 1); grid.Children.Add(empty); return; }
+        if (currentCue == null) { trackList = null; var empty = Card(Text("No cue selected. Adjust your search or category filter to find music.")); Grid.SetColumn(empty, 1); grid.Children.Add(empty); return; }
         var cue = currentCue; var pool = Pool(cue);
         var enabled = new CheckBox { Content = "Use this replacement pool", IsChecked = pool.Enabled }; enabled.Click += (_, _) => { EditablePool().Enabled = enabled.IsChecked == true; SaveDraft(); FilterCues(); };
         var head = Stack(Text(cue.DisplayName, 22), Text(cue.Category + " · Original: " + cue.OriginalTitle, 12, "#65D6C0"), Text(cue.Context, 12, "#A6BAC5"), enabled);
@@ -193,10 +196,19 @@ public partial class MainWindow : Window
     void PlaySelected()
     {
         if (trackList?.SelectedItem is not TrackRow row) return;
+        previewPool = trackList.Items.Cast<TrackRow>().ToArray(); previewIndex = trackList.SelectedIndex;
+        PlayRow(row);
+    }
+    void PlayRow(TrackRow row)
+    {
         string path = library.TrackPath(row.Id); if (!File.Exists(path)) throw new IOException("This music file is missing. Use Locate File or remove it from the pool.");
         player.Open(path); player.Play(); NowPlaying.Text = row.Name;
     }
-    void MoveTrack(int direction) { if (trackList == null || trackList.Items.Count == 0) return; trackList.SelectedIndex = (Math.Max(0, trackList.SelectedIndex) + direction + trackList.Items.Count) % trackList.Items.Count; PreviewAction(PlaySelected); }
+    void MoveTrack(int direction)
+    {
+        if (trackList != null && trackList.Items.Count > 0) { trackList.SelectedIndex = (Math.Max(0, trackList.SelectedIndex) + direction + trackList.Items.Count) % trackList.Items.Count; PreviewAction(PlaySelected); }
+        else if (previewPool.Length > 0) { previewIndex = (previewIndex + direction + previewPool.Length) % previewPool.Length; PreviewAction(() => PlayRow(previewPool[previewIndex])); }
+    }
     void PreviewAction(Action action) { try { action(); } catch (Exception e) { Error(e, "Preview stopped: " + e.Message); } }
     UIElement HomePointPage()
     {
@@ -296,7 +308,8 @@ public partial class MainWindow : Window
     void Error(Exception e, string? friendly = null)
     {
         try { Directory.CreateDirectory(Path.Combine(library.Store, "logs")); File.AppendAllText(Path.Combine(library.Store, "logs", "manager.log"), DateTime.UtcNow.ToString("O") + " " + e + Environment.NewLine); } catch { }
-        MessageBox.Show(this, friendly ?? e.Message, "Operation stopped", MessageBoxButton.OK, MessageBoxImage.Information);
+        string message = friendly ?? (e is UnauthorizedAccessException ? "Access to the game or data folder was denied. Check folder permissions and try again." : e is System.Text.Json.JsonException ? "This configuration could not be read. Choose a valid Mod Manager configuration." : e.Message);
+        MessageBox.Show(this, message, "Operation stopped", MessageBoxButton.OK, MessageBoxImage.Information);
     }
     void Launch() { if (config.GamePath == null) throw new IOException("Select the game installation first."); Process.Start(new ProcessStartInfo("steam://rungameid/1637730") { UseShellExecute = true }); }
     static void Open(string? path) { if (string.IsNullOrWhiteSpace(path) || (!Directory.Exists(path) && !File.Exists(path))) throw new IOException("This folder or file is not available yet."); Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
@@ -304,10 +317,21 @@ public partial class MainWindow : Window
     {
         Directory.CreateDirectory(renderDirectory!);
         if (Environment.GetCommandLineArgs().Contains("--small")) { Width = 880; Height = 620; }
+        if (Environment.GetCommandLineArgs().Contains("--populated"))
+        {
+            string fixtures = Path.Combine(Path.GetDirectoryName(renderDirectory!)!, "fixtures");
+            var a = library.Import(Path.Combine(fixtures, "sine-a.ogg")); var b = library.Import(Path.Combine(fixtures, "sine-b.ogg"));
+            a.Filename = "探索 — " + new string('M', 100) + ".ogg";
+            var missing = new LibraryTrack { Id = new string('f', 64), Filename = "Missing audio.ogg", Duration = 120 };
+            config.Library[a.Id] = a; config.Library[b.Id] = b; config.Library[missing.Id] = missing;
+            currentCue = MusicLibrary.Cues.Single(c => c.GameValue == 32);
+            config.MusicPools[currentCue.Id] = new() { Tracks = [a.Id, b.Id, missing.Id] };
+        }
+        double dpi = Environment.GetCommandLineArgs().Contains("--dpi150") ? 144 : 96;
         foreach (string name in new[] { "Home", "Music", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {
             ShowPage(name); await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); UpdateLayout();
-            var bitmap = new RenderTargetBitmap((int)ActualWidth, (int)ActualHeight, 96, 96, PixelFormats.Pbgra32); bitmap.Render(this);
+            var bitmap = new RenderTargetBitmap((int)(ActualWidth * dpi / 96), (int)(ActualHeight * dpi / 96), dpi, dpi, PixelFormats.Pbgra32); bitmap.Render(this);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var stream = File.Create(Path.Combine(renderDirectory!, name.Replace(" / ", "-").Replace(" & ", "-") + ".png")); encoder.Save(stream);
         }

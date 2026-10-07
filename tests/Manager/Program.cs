@@ -53,6 +53,8 @@ using (var player = new PreviewPlayer())
     player.Pause(); Check(player.State == PlaybackState.Paused, "Preview pause"); player.Play(); Check(player.State == PlaybackState.Playing, "Preview resume");
     player.Seek(TimeSpan.FromSeconds(1)); player.Pause(); Check(player.Position.TotalSeconds >= 0.9, "Preview seek"); player.Stop(); Check(player.State == PlaybackState.Stopped && player.Position.TotalSeconds == 0, "Preview stop resets position");
     player.Volume = 0.2f; Check(Math.Abs(player.Volume - 0.2f) < 0.001, "Preview volume"); player.Open(library.TrackPath(second.Id)); Check(player.Duration.TotalSeconds > 2.9, "Preview next track decoder"); player.Open(managed); Check(player.Duration.TotalSeconds < 2.1, "Preview previous track decoder");
+    player.Volume = 0; player.Seek(player.Duration - TimeSpan.FromMilliseconds(10)); Check(player.Position > player.Duration - TimeSpan.FromMilliseconds(30), "Preview seek near final OGG page");
+    player.Seek(player.Duration); player.Play(); player.Pause(); Check(player.Position.TotalSeconds < 0.5, "Preview replay restarts after end of file");
     Refused(() => player.Open(invalid), "Invalid preview file handled"); Refused(() => player.Open(Path.Combine(root, "absent.ogg")), "Missing preview file handled");
 }
 Check(Patches.Hash(engine.Exe) == liveHash && MusicLibrary.Hash(runtimeConfig) == before, "Preview leaves deployed game untouched");

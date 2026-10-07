@@ -1,5 +1,18 @@
 # Changelog
 
+## Mod Manager 0.1.0-rc1 development preview — 2026-10-07
+
+- Added .NET 8 WPF manager with all seven pages, pool editing, playback preview, and Steam detection.
+- Discovered all 71 music cues and seven ambience cues from the verified executable and installed config/biome data.
+- Added managed Vorbis library, content deduplication, missing-file repair, legacy-pool import, and configuration sharing without audio.
+- Generalized random pools to actual queued playback starts with duplicate suppression and exact-file bookmarks.
+- Fixed original-music fallback, packed-file offsets, and untagged replacement loop bounds.
+- Composed music with the newer safe Home Points implementation; journaled music/configuration/helpers and executable together.
+- Recognized exact previous-release hashes for migration; protected unknown builds and linked paths.
+- Added build/test tooling and native acceptance plan. Gameplay and real high-DPI acceptance remain pending; this is not a production release.
+
+## Previous installer releases
+
 ## 0.1.0 — 2026-09-30
 
 - Promoted the tested RC to the first release without changing either mod's runtime or patch logic.

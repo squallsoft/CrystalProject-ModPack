@@ -67,7 +67,7 @@
   },
   {
     "id": "fanfare",
-    "displayName": "Fanfare",
+    "displayName": "Victory",
     "gameCue": "Fanfare",
     "gameValue": 9,
     "category": "Victory",
@@ -111,7 +111,7 @@
   },
   {
     "id": "fanfare_boss",
-    "displayName": "Fanfare Boss",
+    "displayName": "Boss Triumph",
     "gameCue": "FanfareBoss",
     "gameValue": 13,
     "category": "Victory",
@@ -122,7 +122,7 @@
   },
   {
     "id": "battle1",
-    "displayName": "Battle1",
+    "displayName": "Normal Battle",
     "gameCue": "Battle1",
     "gameValue": 14,
     "category": "Battle",
@@ -146,7 +146,7 @@
   },
   {
     "id": "boss1",
-    "displayName": "Boss1",
+    "displayName": "Boss Battle",
     "gameCue": "Boss1",
     "gameValue": 15,
     "category": "Boss",
@@ -190,7 +190,7 @@
   },
   {
     "id": "battle2",
-    "displayName": "Battle2",
+    "displayName": "Advanced Battle",
     "gameCue": "Battle2",
     "gameValue": 16,
     "category": "Battle",
@@ -247,7 +247,7 @@
   },
   {
     "id": "boss2",
-    "displayName": "Boss2",
+    "displayName": "Advanced Boss Battle",
     "gameCue": "Boss2",
     "gameValue": 17,
     "category": "Boss",
@@ -324,7 +324,7 @@
   },
   {
     "id": "battle_pvp",
-    "displayName": "Battle Pvp",
+    "displayName": "Rival Battle",
     "gameCue": "BattlePvp",
     "gameValue": 18,
     "category": "Battle",
@@ -335,7 +335,7 @@
   },
   {
     "id": "battle3",
-    "displayName": "Battle3",
+    "displayName": "Expert Battle",
     "gameCue": "Battle3",
     "gameValue": 19,
     "category": "Battle",
@@ -385,7 +385,7 @@
   },
   {
     "id": "boss3",
-    "displayName": "Boss3",
+    "displayName": "Expert Boss Battle",
     "gameCue": "Boss3",
     "gameValue": 20,
     "category": "Boss",
@@ -475,7 +475,7 @@
   },
   {
     "id": "battle_final",
-    "displayName": "Battle Final",
+    "displayName": "Final Battle",
     "gameCue": "BattleFinal",
     "gameValue": 21,
     "category": "Boss",
@@ -486,7 +486,7 @@
   },
   {
     "id": "battle_dungeon1",
-    "displayName": "Battle Dungeon1",
+    "displayName": "Dungeon Battle",
     "gameCue": "BattleDungeon1",
     "gameValue": 22,
     "category": "Battle",
@@ -517,7 +517,7 @@
   },
   {
     "id": "battle_dungeon2",
-    "displayName": "Battle Dungeon2",
+    "displayName": "Advanced Dungeon Battle",
     "gameCue": "BattleDungeon2",
     "gameValue": 23,
     "category": "Battle",
@@ -546,7 +546,7 @@
   },
   {
     "id": "battle_dungeon3",
-    "displayName": "Battle Dungeon3",
+    "displayName": "Expert Dungeon Battle",
     "gameCue": "BattleDungeon3",
     "gameValue": 24,
     "category": "Battle",
@@ -596,7 +596,7 @@
   },
   {
     "id": "battle_angelo",
-    "displayName": "Battle Angelo",
+    "displayName": "EX Battle",
     "gameCue": "BattleAngelo",
     "gameValue": 25,
     "category": "Boss",
@@ -610,7 +610,7 @@
   },
   {
     "id": "fanfare_pvp",
-    "displayName": "Fanfare Pvp",
+    "displayName": "Rival Victory",
     "gameCue": "FanfarePvp",
     "gameValue": 26,
     "category": "Victory",
@@ -643,7 +643,7 @@
   },
   {
     "id": "battle_mountain",
-    "displayName": "Battle Mountain",
+    "displayName": "Mountain Battle",
     "gameCue": "BattleMountain",
     "gameValue": 29,
     "category": "Battle",
@@ -662,7 +662,7 @@
   },
   {
     "id": "boss_depths",
-    "displayName": "Boss Depths",
+    "displayName": "Depths Battle",
     "gameCue": "BossDepths",
     "gameValue": 30,
     "category": "Boss",
@@ -675,7 +675,7 @@
   },
   {
     "id": "z1_spawning_meadows",
-    "displayName": "Spawning Meadows",
+    "displayName": "Spawning Meadows / Proving Meadows",
     "gameCue": "Z1_SpawningMeadows",
     "gameValue": 32,
     "category": "Areas",
@@ -733,7 +733,7 @@
   },
   {
     "id": "z5_yamagawa_ma",
-    "displayName": "Yamagawa MA",
+    "displayName": "Yamagawa M.A.",
     "gameCue": "Z5_YamagawaMA",
     "gameValue": 36,
     "category": "Areas",
@@ -762,7 +762,7 @@
   },
   {
     "id": "z8_tall_tall_heights",
-    "displayName": "Tall Tall Heights",
+    "displayName": "Tall, Tall Heights",
     "gameCue": "Z8_TallTallHeights",
     "gameValue": 38,
     "category": "Areas",
@@ -885,7 +885,7 @@
   },
   {
     "id": "z20_okimoto_ns",
-    "displayName": "Okimoto NS",
+    "displayName": "Okimoto N.S.",
     "gameCue": "Z20_OkimotoNS",
     "gameValue": 46,
     "category": "Areas",
@@ -1074,7 +1074,7 @@
   },
   {
     "id": "z38_old_jade_city",
-    "displayName": "Old Jade City",
+    "displayName": "Shoudu Province",
     "gameCue": "Z38_OldJadeCity",
     "gameValue": 59,
     "category": "Areas",
@@ -1091,7 +1091,7 @@
   },
   {
     "id": "z63_lands_end",
-    "displayName": "Lands End",
+    "displayName": "Land\u0027s End",
     "gameCue": "Z63_LandsEnd",
     "gameValue": 60,
     "category": "Areas",
@@ -1108,7 +1108,7 @@
   },
   {
     "id": "z54_jungle",
-    "displayName": "Jungle",
+    "displayName": "Jidamba Tangle (Short Indoor)",
     "gameCue": "Z54_Jungle",
     "gameValue": 61,
     "category": "Areas",
@@ -1125,7 +1125,7 @@
   },
   {
     "id": "z55_jungle_temple",
-    "displayName": "Jungle Temple",
+    "displayName": "Jidamba Eaclaneya",
     "gameCue": "Z55_JungleTemple",
     "gameValue": 62,
     "category": "Areas",
@@ -1140,7 +1140,7 @@
   },
   {
     "id": "z43_undercity",
-    "displayName": "Undercity",
+    "displayName": "The Undercity",
     "gameCue": "Z43_Undercity",
     "gameValue": 63,
     "category": "Areas",
@@ -1180,7 +1180,7 @@
   },
   {
     "id": "z90_ice_library",
-    "displayName": "Ice Library",
+    "displayName": "Castle Sequoia (Ice)",
     "gameCue": "Z90_IceLibrary",
     "gameValue": 66,
     "category": "Areas",
@@ -1198,7 +1198,7 @@
   },
   {
     "id": "z58_castle_sequoia",
-    "displayName": "Castle Sequoia",
+    "displayName": "Castle Sequoia (Skums)",
     "gameCue": "Z58_CastleSequoia",
     "gameValue": 67,
     "category": "Areas",
@@ -1215,7 +1215,7 @@
   },
   {
     "id": "z80_tram_tentacles",
-    "displayName": "Tram Tentacles",
+    "displayName": "Continental Tram (Flesh)",
     "gameCue": "Z80_TramTentacles",
     "gameValue": 68,
     "category": "Areas",
