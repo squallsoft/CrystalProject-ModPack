@@ -180,11 +180,24 @@ public partial class MainWindow : Window
         var cue = currentCue; if (cue == null || busy) return;
         await Run("Importing and checking music…", async () =>
         {
-            var imported = await Task.Run(() => paths.Select(library.Import).ToArray());
+            var imported = await ImportTracks(paths.ToArray());
             if (!config.MusicPools.TryGetValue(cue.Id, out var pool)) config.MusicPools[cue.Id] = pool = new();
             foreach (var track in imported) { config.Library[track.Id] = track; if (!pool.Tracks.Contains(track.Id)) pool.Tracks.Add(track.Id); }
             SaveDraft();
         });
+    }
+    async Task<LibraryTrack[]> ImportTracks(string[] paths, int offset = 0, int? total = null)
+    {
+        int count = total ?? paths.Length;
+        OperationProgress.IsIndeterminate = false;
+        var progress = new Progress<(int Index, string Name, double Fraction)>(p =>
+        {
+            OperationProgress.Value = count == 0 ? 100 : 100.0 * (p.Index + p.Fraction) / count;
+            string stage = p.Fraction < 0.05 ? "Copying" : p.Fraction < 0.95 ? "Validating audio" : p.Fraction < 1 ? "Checking file" : "Imported";
+            Status.Text = $"{stage} · {p.Index + 1} of {count} · {p.Name} · {OperationProgress.Value:0}% overall";
+        });
+        return await Task.Run(() => paths.Select((path, i) => library.Import(path, fraction =>
+            ((IProgress<(int, string, double)>)progress).Report((offset + i, Path.GetFileName(path), fraction)))).ToArray());
     }
     void RemoveTrack() { if (trackList?.SelectedItem is TrackRow row) { EditablePool().Tracks.Remove(row.Id); SaveDraft(); ShowPage("Music"); } }
     async void LocateTrack()
@@ -229,12 +242,17 @@ public partial class MainWindow : Window
         await Run("Importing legacy battle, boss, and victory pools…", async () =>
         {
             var e = RequireEngine();
-            foreach (var pair in new[] { ("Battle", new[] { 14,16,19,29,22,23,24 }), ("Boss", new[] { 15,17,20,30,21,25 }), ("Victory", new[] { 9,13 }) })
+            var groups = await Task.Run(() => new[] { ("Battle", new[] { 14,16,19,29,22,23,24 }), ("Boss", new[] { 15,17,20,30,21,25 }), ("Victory", new[] { 9,13 }) }.Select(pair =>
             {
-                string folder = Path.Combine(e.Game, "ogg", pair.Item1); if (!Directory.Exists(folder)) continue;
-                var tracks = await Task.Run(() => Directory.GetFiles(folder, "*.ogg").Select(library.Import).ToArray());
+                string folder = Path.Combine(e.Game, "ogg", pair.Item1);
+                return (Values: pair.Item2, Paths: Directory.Exists(folder) ? Directory.GetFiles(folder, "*.ogg") : Array.Empty<string>());
+            }).ToArray());
+            int total = groups.Sum(g => g.Paths.Length), offset = 0;
+            foreach (var group in groups)
+            {
+                var tracks = await ImportTracks(group.Paths, offset, total); offset += group.Paths.Length;
                 foreach (var track in tracks) config.Library[track.Id] = track;
-                foreach (int value in pair.Item2)
+                foreach (int value in group.Values)
                 {
                     string id = MusicLibrary.Cues.Single(c => c.GameValue == value).Id;
                     if (!config.MusicPools.TryGetValue(id, out var pool)) config.MusicPools[id] = pool = new();
@@ -301,9 +319,10 @@ public partial class MainWindow : Window
     async Task Run(string message, Func<Task> operation)
     {
         if (busy) return; busy = true; Navigation.IsEnabled = PageContent.IsEnabled = false; Status.Text = message;
+        OperationProgress.Value = 0; OperationProgress.IsIndeterminate = true; OperationProgress.Visibility = Visibility.Visible;
         try { await operation(); }
         catch (Exception e) { Error(e); }
-        finally { busy = false; Navigation.IsEnabled = PageContent.IsEnabled = true; ShowPage(page); }
+        finally { busy = false; OperationProgress.Visibility = Visibility.Collapsed; Navigation.IsEnabled = PageContent.IsEnabled = true; ShowPage(page); }
     }
     void Error(Exception e, string? friendly = null)
     {

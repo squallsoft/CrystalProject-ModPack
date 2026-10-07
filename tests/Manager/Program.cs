@@ -14,6 +14,8 @@ Check(MusicLibrary.Cues.Count == 78 && MusicLibrary.Cues.Count(c => !c.IsAmbienc
 string a = Path.Combine(repo, "artifacts", "fixtures", "sine-a.ogg"), b = Path.Combine(repo, "artifacts", "fixtures", "sine-b.ogg");
 string unicode = Path.Combine(root, "音楽 — " + new string('x', 120) + ".ogg"); File.Copy(a, unicode);
 string sourceHash = MusicLibrary.Hash(a); var first = library.Import(unicode); var same = library.Import(a); var second = library.Import(b);
+var importProgress = new List<double>(); library.Import(b, importProgress.Add);
+Check(importProgress.First() == 0 && importProgress.Last() == 1 && importProgress.Zip(importProgress.Skip(1)).All(p => p.First <= p.Second) && importProgress.All(p => p >= 0 && p <= 1), "Import progress is bounded, monotonic, and completes");
 Check(first.Id == same.Id && Directory.GetFiles(Path.Combine(library.Store, "Library"), "*.ogg").Length == 2, "Content deduplication; Unicode and long source filenames");
 Check(MusicLibrary.Hash(a) == sourceHash && first.Duration > 1.9 && first.Duration < 2.1, "Source untouched; decoded duration");
 config.Library[first.Id] = first; config.Library[second.Id] = second;

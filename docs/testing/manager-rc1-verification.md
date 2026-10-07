@@ -14,6 +14,8 @@ This records automated and rendered-UI evidence for Mod Manager 0.1.0-rc1. **Nat
 
 The added end-of-file preview regression exposed an NVorbis final-page seeking failure. Preview now represents exclusive EOF without indexing a nonexistent packet and falls back to decoding forward from an earlier seek point when a valid final page cannot be indexed. Near-end and replay regressions pass.
 
+Following import feedback, regular and legacy imports now show an overall progress bar, current filename, file count, and decoding progress. Validation reports are throttled to one update per 200 ms while decoding on a background thread. Other operations show an indeterminate bar. The manager suite was rerun with an added bounded/monotonic/completion progress regression: **38 manager checks passed**, and the updated portable build was repackaged. Native import responsiveness acceptance remains pending.
+
 WPF pages were rendered and visually inspected at 1200×800 and minimum 880×620 layout, with an additional 144-DPI rendering. Populated Music used synthetic tracks, a long Unicode filename, and a missing-file row. Readability, button contrast, wrapping, pool scrolling and minimum-window access were corrected. These snapshots are private `artifacts/ui-qa-*` files. They are **not** evidence of real Windows per-monitor DPI changes, keyboard interaction, or audible gameplay.
 
 The portable ZIP includes only the manager EXE, README, changelog, project license, notices, audio dependency licenses, cue metadata report and native checklist. It contains no game executable/DLLs, audio or saves. Build output and ZIP are ignored by Git. The legacy installer README and original output hashes were archived under docs to distinguish release history from new manager outputs.

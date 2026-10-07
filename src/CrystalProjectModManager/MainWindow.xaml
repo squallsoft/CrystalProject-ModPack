@@ -20,7 +20,10 @@
      <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal"><TextBlock Text="Volume" FontSize="12" Margin="0,0,8,0"/><Slider x:Name="Volume" Width="140" Minimum="0" Maximum="1" Value="0.65" ToolTip="Preview volume"/></StackPanel>
     </Grid>
    </Border>
-   <TextBlock x:Name="Status" Grid.Row="3" Text="Preparing your workspace…" Foreground="#A6BAC5"/>
+   <StackPanel Grid.Row="3">
+    <ProgressBar x:Name="OperationProgress" Visibility="Collapsed" Height="8" Minimum="0" Maximum="100" Margin="0,0,0,8" Foreground="#65D6C0"/>
+    <TextBlock x:Name="Status" Text="Preparing your workspace…" Foreground="#A6BAC5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, ElementName=Status}"/>
+   </StackPanel>
   </Grid>
  </Grid>
 </Window>

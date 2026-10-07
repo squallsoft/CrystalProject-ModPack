@@ -49,24 +49,40 @@ public sealed class MusicLibrary
         return Path.Combine(Store, "Library", id + ".ogg");
     }
     public static string Hash(string path) { using var f = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(f)).ToLowerInvariant(); }
-    public static double ValidateAudio(string path)
+    public static double ValidateAudio(string path) => ValidateAudio(path, null);
+    static double ValidateAudio(string path, Action<double>? progress)
     {
         if (!Path.GetExtension(path).Equals(".ogg", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Choose Ogg Vorbis (.ogg) music. Other formats need conversion before import.");
         using var reader = new VorbisReader(path);
         if (reader.Channels is < 1 or > 2 || reader.SampleRate < 8000 || reader.TotalTime <= TimeSpan.Zero) throw new InvalidDataException("Choose a valid mono or stereo Ogg Vorbis track.");
         var samples = new float[8192]; long total = 0; int read;
-        while ((read = reader.ReadSamples(samples, 0, samples.Length)) > 0) total += read;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while ((read = reader.ReadSamples(samples, 0, samples.Length)) > 0)
+        {
+            total += read;
+            if (progress != null && clock.ElapsedMilliseconds >= 200)
+            {
+                progress(Math.Clamp(reader.TimePosition.TotalSeconds / reader.TotalTime.TotalSeconds, 0, 1));
+                clock.Restart();
+            }
+        }
         if (total == 0) throw new InvalidDataException("The music file contains no playable audio.");
         return reader.TotalTime.TotalSeconds;
     }
-    public LibraryTrack Import(string path)
+    public LibraryTrack Import(string path) => Import(path, null);
+    public LibraryTrack Import(string path, Action<double>? progress)
     {
         var temp = Path.Combine(Store, "Library", Guid.NewGuid().ToString("N") + ".ogg");
         try
         {
-            File.Copy(path, temp); double duration = ValidateAudio(temp); string id = Hash(temp); string destination = TrackPath(id);
+            progress?.Invoke(0);
+            File.Copy(path, temp); progress?.Invoke(0.05);
+            double duration = ValidateAudio(temp, p => progress?.Invoke(0.05 + 0.9 * p));
+            progress?.Invoke(0.95);
+            string id = Hash(temp); string destination = TrackPath(id);
             if (File.Exists(destination)) { if (Hash(destination) != id) throw new IOException("A managed music copy is damaged. Locate the original file to repair it."); }
             else File.Move(temp, destination);
+            progress?.Invoke(1);
             return new() { Id = id, Filename = Path.GetFileName(path), ImportedFrom = Path.GetFullPath(path), Duration = duration };
         }
         finally { if (File.Exists(temp)) File.Delete(temp); }
