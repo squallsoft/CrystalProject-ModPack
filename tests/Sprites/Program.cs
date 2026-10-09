@@ -71,6 +71,16 @@ string unknown = Path.Combine(workspace, "Unknown.png"); File.WriteAllBytes(unkn
 Refused(() => service.ValidateFolder(workspace), "Unknown workspace PNG filenames refused"); File.Delete(unknown);
 File.WriteAllBytes(Path.Combine(workspace, "Bat.png"), Png(5, 3, 30));
 Refused(() => service.ValidateFolder(workspace), "Workspace dimensions validated before deployment"); File.WriteAllBytes(Path.Combine(workspace, "Bat.png"), changed);
+var oversize = png.ToArray(); System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(oversize.AsSpan(16, 4), 8193);
+File.WriteAllBytes(Path.Combine(workspace, "Bat.png"), oversize);
+File.WriteAllBytes(Path.Combine(workspace, "Slime.png"), Png(5, 3, 30));
+using (var large = File.Create(Path.Combine(workspace, "敵.png"))) large.SetLength(32 * 1024 * 1024 + 1);
+var problems = service.ScanFolder(workspace);
+Check(problems.Plan == null && problems.Issues.Count == 3 && problems.Issues.Any(i => i.Contains("Bat.png") && i.Contains("8193")) && problems.Issues.Any(i => i.Contains("32 MiB")), "Scan collects all file-specific size issues without returning an applicable plan");
+Check(File.ReadAllBytes(live).SequenceEqual(source), "Reporting invalid PNGs leaves installed sprites unchanged");
+using (var cancelled = new CancellationTokenSource()) { cancelled.Cancel(); Refused(() => service.ScanFolder(workspace, cancellation: cancelled.Token), "Sprite scan supports cancellation"); }
+File.WriteAllBytes(Path.Combine(workspace, "Bat.png"), changed); File.WriteAllBytes(Path.Combine(workspace, "Slime.png"), png); File.WriteAllBytes(Path.Combine(workspace, "敵.png"), png);
+Check(service.ScanFolder(workspace).Plan?.Changes.Count == 1, "Corrected PNGs can validate successfully after a failed scan");
 string manifestPath = Path.Combine(workspace, "sprites.json"); string manifest = File.ReadAllText(manifestPath);
 File.WriteAllText(manifestPath, manifest.Replace(EnemySprites.Hash(source), new string('0', 64)));
 Refused(() => service.ValidateFolder(workspace), "Workspace from different source archive refused"); File.WriteAllText(manifestPath, manifest);

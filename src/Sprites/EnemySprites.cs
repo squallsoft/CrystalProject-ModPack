@@ -12,6 +12,7 @@ public sealed record SpriteEntry(string Name, byte[] Png, int Width, int Height)
 }
 public sealed record SpriteChange(string Name, string Filename, int Width, int Height, int Scale = 1);
 public sealed record SpritePlan(string ArchiveHash, string Workspace, IReadOnlyList<SpriteChange> Changes, byte[] Archive, byte[] SizeCatalog, int HdSprites);
+public sealed record SpriteValidation(SpritePlan? Plan, IReadOnlyList<string> Issues);
 public sealed record SpriteExport(int SchemaVersion, string SourceArchiveHash, SpriteExportEntry[] Sprites);
 public sealed record SpriteExportEntry(string Filename, int Width, int Height, string Sha256);
 public sealed record SpriteState(string GamePath, string OriginalHash, string AppliedHash, string? PendingHash = null);
@@ -70,7 +71,7 @@ public sealed class EnemySprites
         int width = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4));
         int height = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20, 4));
         if (width <= 0 || height <= 0 || width > 8192 || height > 8192 || (long)width * height > 16_777_216)
-            throw new InvalidDataException("Unsupported sprite dimensions.");
+            throw new InvalidDataException($"Image is {width} × {height}. Use at most 8192 pixels per axis and 16,777,216 pixels total. Resize and export again.");
         int position = 8; bool data = false, end = false;
         while (position < png.Length)
         {
@@ -216,8 +217,14 @@ public sealed class EnemySprites
         JsonSerializer.Serialize(metadata, manifest, Json);
         return destination;
     });
-    public SpritePlan ValidateFolder(string folder, Action<int, int>? progress = null) => Locked(() =>
+    public SpritePlan ValidateFolder(string folder, Action<int, int>? progress = null)
     {
+        var report = ScanFolder(folder, progress);
+        return report.Plan ?? throw new InvalidDataException(string.Join("\n", report.Issues));
+    }
+    public SpriteValidation ScanFolder(string folder, Action<int, int>? progress = null, CancellationToken cancellation = default) => Locked(() =>
+    {
+        cancellation.ThrowIfCancellationRequested();
         folder = Path.GetFullPath(folder); SafePath(folder);
         var manifest = JsonSerializer.Deserialize<SpriteExport>(Read(Path.Combine(folder, "sprites.json"))) ?? throw new InvalidDataException("Choose a folder extracted by Enemy Sprites.");
         byte[] live = Read(ArchivePath), original = Baseline(live);
@@ -225,21 +232,28 @@ public sealed class EnemySprites
         var entries = Parse(original); var installed = Parse(live).ToDictionary(e => e.Name);
         var known = entries.ToDictionary(e => e.Filename, StringComparer.OrdinalIgnoreCase);
         var files = Directory.GetFiles(folder).Where(f => Path.GetExtension(f).Equals(".png", StringComparison.OrdinalIgnoreCase)).ToArray();
-        var unknown = files.Where(f => !known.ContainsKey(Path.GetFileName(f))).Select(Path.GetFileName).ToArray();
-        if (unknown.Length > 0) throw new InvalidDataException("PNG filenames do not match extracted sprites: "
-            + string.Join(", ", unknown.Take(5)) + (unknown.Length > 5 ? $" (and {unknown.Length - 5} more)" : "")
-            + ". Use the exact extracted filename for a replacement, or move extra PNGs into a subfolder.");
+        var issues = new List<string>();
         var replacements = new Dictionary<string, byte[]>(); var changes = new List<SpriteChange>();
         for (int i = 0; i < files.Length; i++)
         {
-            var entry = known[Path.GetFileName(files[i])]; byte[] png = Read(files[i]); var size = ValidatePng(png);
-            int scale = Scale(size.Width, size.Height, entry.Width, entry.Height);
-            if (!png.AsSpan().SequenceEqual(installed[entry.Name].Png)) { replacements[entry.Name] = png; changes.Add(new(entry.Name, entry.Filename, size.Width, size.Height, scale)); }
+            cancellation.ThrowIfCancellationRequested();
+            try
+            {
+                if (!known.TryGetValue(Path.GetFileName(files[i]), out var entry)) throw new InvalidDataException("Use an exact extracted filename, or move this extra PNG into a subfolder.");
+                if (new FileInfo(files[i]).Length > 32 * 1024 * 1024) throw new InvalidDataException("Image exceeds 32 MiB. Export a smaller PNG.");
+                byte[] png = Read(files[i]); var size = ValidatePng(png);
+                int scale = Scale(size.Width, size.Height, entry.Width, entry.Height);
+                if (!png.AsSpan().SequenceEqual(installed[entry.Name].Png)) { replacements[entry.Name] = png; changes.Add(new(entry.Name, entry.Filename, size.Width, size.Height, scale)); }
+            }
+            catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or FormatException)
+            { issues.Add(Path.GetFileName(files[i]) + ": " + error.Message); }
             progress?.Invoke(i + 1, files.Length);
         }
+        cancellation.ThrowIfCancellationRequested();
+        if (issues.Count > 0) return new SpriteValidation(null, issues);
         byte[] updated = Rebuild(live, replacements, entries); var baseline = entries.ToDictionary(e => e.Name);
         int hd = Parse(updated).Count(e => Scale(e.Width, e.Height, baseline[e.Name].Width, baseline[e.Name].Height) > 1);
-        return new SpritePlan(Hash(live), folder, changes, updated, SizeCatalog(entries), hd);
+        return new SpriteValidation(new SpritePlan(Hash(live), folder, changes, updated, SizeCatalog(entries), hd), []);
     });
     public void Apply(SpritePlan plan, Action ensureGameClosed, Action<byte[]>? ensureHdRendering = null) => Locked(() =>
     {

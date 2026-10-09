@@ -68,13 +68,13 @@ public partial class MainWindow : Window
             // Let file-picker callbacks begin their operation before checking edits.
             _ = Dispatcher.InvokeAsync(() =>
             {
-                if (renderDirectory == null && configLoaded && !busy && page == "Enemy Sprites"
+                if (renderDirectory == null && configLoaded && !busy && !spriteScanning && page == "Enemy Sprites"
                     && enemySprites.Count > 0 && spriteScanGame == config.GamePath && config.EnemySpritesFolder != null)
                     _ = ValidateEnemySprites();
             }, DispatcherPriority.Background);
         };
         Closing += (_, e) => { if (busy) { e.Cancel = true; Status.Text = "Wait for the current operation to finish before closing."; } };
-        Closed += (_, _) => { timer.Stop(); player.Dispose(); if (configLoaded) { try { library.Save(config); } catch { } } };
+        Closed += (_, _) => { spriteScanCancellation?.Cancel(); timer.Stop(); player.Dispose(); if (configLoaded) { try { library.Save(config); } catch { } } };
         Loaded += async (_, _) =>
         {
             try { config = library.Load(); configLoaded = true; }
@@ -400,6 +400,7 @@ public partial class MainWindow : Window
         double dpi = Environment.GetCommandLineArgs().Contains("--dpi150") ? 144 : 96;
         if (Environment.GetCommandLineArgs().Contains("--verify-browser")) VerifyMusicBrowser();
         if (config.GamePath != null) await LoadEnemySprites();
+        if (Environment.GetCommandLineArgs().Contains("--verify-sprite-scan")) await VerifySpriteScan();
         if (config.EnemySpritesFolder != null && Environment.GetCommandLineArgs().Contains("--validate-sprites")) await ValidateEnemySprites();
         foreach (string name in new[] { "Home", "Music", "Enemy Sprites", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {

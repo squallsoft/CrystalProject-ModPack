@@ -14,6 +14,13 @@ public partial class MainWindow
     HashSet<string> installedSpriteChanges = [];
     Dictionary<string, int> installedSpriteScales = [];
     SpritePlan? spritePlan;
+    CancellationTokenSource? spriteScanCancellation;
+    readonly SemaphoreSlim spriteScanGate = new(1, 1);
+    bool spriteScanning;
+    string spriteScanStatus = "Choose an edited folder to check for updates.";
+    TextBlock? spriteScanLabel;
+    Button? spriteApplyButton, spriteValidateButton, spriteCancelButton;
+    Action? refreshSpriteRows;
     string? spriteScanGame, selectedSpriteName;
     string spriteSearch = "";
     EnemySprites SpriteService() => new(config.GamePath ?? throw new IOException("Choose the game folder in Installation / Game first."), library.Store);
@@ -28,16 +35,21 @@ public partial class MainWindow
         bool loaded = enemySprites.Count > 0 && spriteScanGame == config.GamePath;
         var extract = Button("Extract All Sprites", ExtractEnemySprites, true); extract.IsEnabled = loaded;
         var validate = Button("Validate Edited Folder", () => _ = ValidateEnemySprites()); validate.IsEnabled = loaded && config.EnemySpritesFolder != null;
+        spriteValidateButton = validate;
         var apply = Button(spritePlan == null ? "Validate Before Applying" : $"Apply {spritePlan.Changes.Count} Sprite Updates", () => _ = ApplyEnemySprites(), true); apply.IsEnabled = spritePlan?.Changes.Count > 0;
+        spriteApplyButton = apply;
+        var cancel = Button("Cancel Scan", () => spriteScanCancellation?.Cancel()); spriteCancelButton = cancel;
+        spriteScanLabel = Text(spriteScanStatus, 12, "#A6BAC5");
+        var scanInfo = new ScrollViewer { Content = spriteScanLabel, MaxHeight = 115, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var restore = Button("Restore Backed-Up Sprites", () => _ = RestoreEnemySprites()); restore.IsEnabled = SpriteService().HasBackup;
         var hd = Button(installed?.HdSprites == true ? "HD Support Installed" : "Install HD Support", () => _ = InstallHdSprites()); hd.IsEnabled = loaded && installed != null && !installed.HdSprites;
         var removeHd = Button("Remove HD Support", () => _ = RemoveHdSprites()); removeHd.IsEnabled = installed?.HdSprites == true;
         var summary = Card(Stack(Text(loaded ? $"{enemySprites.Count} enemy sprites · {installedSpriteChanges.Count} updated" : "Read the enemy sprite library", 22),
             Text("Use original, 2×, 4×, or 10× PNGs. Keep filenames, proportions, and transparency. HD rendering preserves the original in-game size.", 13, "#A6BAC5"),
-            Actions(extract, Button("Choose Edited Folder", ChooseEnemySpriteFolder), validate, apply),
+            Actions(extract, Button("Choose Edited Folder", ChooseEnemySpriteFolder), validate, cancel, apply),
             Actions(Button("Reload Sprites", () => _ = LoadEnemySprites()), Button("Open Editing Folder", () => Open(config.EnemySpritesFolder)), restore, hd, removeHd),
             Text(config.EnemySpritesFolder ?? "No editing folder selected", 12, "#65D6C0"),
-            Text(spritePlan == null ? "Choose an edited folder to check for updates. HD support installs automatically for HD images." : $"{spritePlan.Changes.Count} pending updates · {spritePlan.HdSprites} HD sprites after apply. Edits are checked when you return to this app.", 12, "#A6BAC5")));
+            scanInfo));
         var browser = new Grid { Height = ActualHeight < 700 ? 330 : double.NaN };
         browser.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); browser.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         var left = new Grid { Margin = new(0, 0, 16, 0) }; left.RowDefinitions.Add(new() { Height = GridLength.Auto }); left.RowDefinitions.Add(new());
@@ -60,7 +72,7 @@ public partial class MainWindow
             {
                 byte[] png = row.Sprite.Png; string? path = config.EnemySpritesFolder == null ? null : Path.Combine(config.EnemySpritesFolder, row.Sprite.Filename);
                 bool edited = path != null && File.Exists(path);
-                if (edited) { EnemySprites.SafePath(path!); png = File.ReadAllBytes(path!); EnemySprites.ValidatePng(png); }
+                if (edited) { EnemySprites.SafePath(path!); if (new FileInfo(path!).Length > 32 * 1024 * 1024) throw new IOException("Image exceeds 32 MiB. Export a smaller PNG."); png = File.ReadAllBytes(path!); EnemySprites.ValidatePng(png); }
                 using var stream = new MemoryStream(png);
                 var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze(); image.Source = bitmap;
                 int factor = EnemySprites.Scale(bitmap.PixelWidth, bitmap.PixelHeight, row.Sprite.Width, row.Sprite.Height);
@@ -79,7 +91,7 @@ public partial class MainWindow
             if (list.SelectedItem == null && list.Items.Count > 0) list.SelectedIndex = 0;
         }
         query.TextChanged += (_, _) => { spriteSearch = query.Text; Filter(); };
-        left.Children.Add(Stack(Text("Search enemy sprites", 12, "#A6BAC5"), query)); left.Children.Add(list); browser.Children.Add(left); browser.Children.Add(previewCard); Filter();
+        left.Children.Add(Stack(Text("Search enemy sprites", 12, "#A6BAC5"), query)); left.Children.Add(list); browser.Children.Add(left); browser.Children.Add(previewCard); refreshSpriteRows = Filter; Filter(); UpdateSpriteScanUi();
         var footer = Text("Close the game before applying or restoring sprites. Backups stay outside Steam.", 12, "#A6BAC5"); footer.Margin = new(0, 14, 0, 0);
         if (ActualHeight < 700) return Stack(summary, browser, footer);
         var pageGrid = new Grid(); pageGrid.RowDefinitions.Add(new() { Height = GridLength.Auto }); pageGrid.RowDefinitions.Add(new()); pageGrid.RowDefinitions.Add(new() { Height = GridLength.Auto });
@@ -94,7 +106,7 @@ public partial class MainWindow
         var original = data.Original.ToDictionary(e => e.Name);
         installedSpriteChanges = data.Installed.Where(e => !e.Png.AsSpan().SequenceEqual(original[e.Name].Png)).Select(e => e.Name).ToHashSet();
         installedSpriteScales = data.Installed.ToDictionary(e => e.Name, e => EnemySprites.Scale(e.Width, e.Height, original[e.Name].Width, original[e.Name].Height));
-        if (config.EnemySpritesFolder != null) await CheckEnemySpriteEdits();
+        if (config.EnemySpritesFolder != null) _ = ValidateEnemySprites();
     });
     Action<int, int> SpriteProgress(string operation)
     {
@@ -122,14 +134,48 @@ public partial class MainWindow
         if (!File.Exists(Path.Combine(dialog.FolderName, "sprites.json"))) throw new IOException("Choose a folder exported by Extract All Sprites, containing sprites.json.");
         config.EnemySpritesFolder = dialog.FolderName; spritePlan = null; SaveDraft(); _ = ValidateEnemySprites();
     }
-    async Task ValidateEnemySprites() => await Run("Validating edited enemy sprites…", async () =>
+    async Task ValidateEnemySprites()
     {
+        if (busy && spriteScanning) return;
         await CheckEnemySpriteEdits();
-    });
-    async Task CheckEnemySpriteEdits()
+    }
+    void UpdateSpriteScanUi()
     {
-        spritePlan = null; var service = SpriteService(); var progress = SpriteProgress("Validating");
-        spritePlan = await Task.Run(() => service.ValidateFolder(config.EnemySpritesFolder ?? throw new IOException("Extract sprites or choose an edited folder first."), progress));
+        if (spriteScanLabel != null) { spriteScanLabel.Text = spriteScanStatus; spriteScanLabel.Foreground = Brush(spritePlan == null && !spriteScanning ? "#EACB89" : "#A6BAC5"); }
+        if (spriteApplyButton != null) { spriteApplyButton.Content = spriteScanning ? "Checking Sprite Updates…" : spritePlan == null ? "Fix Images Before Applying" : $"Apply {spritePlan.Changes.Count} Sprite Updates"; spriteApplyButton.IsEnabled = !spriteScanning && spritePlan?.Changes.Count > 0; }
+        if (spriteValidateButton != null) spriteValidateButton.IsEnabled = !spriteScanning && config.EnemySpritesFolder != null;
+        if (spriteCancelButton != null) spriteCancelButton.Visibility = spriteScanning ? Visibility.Visible : Visibility.Collapsed;
+    }
+    async Task<bool> CheckEnemySpriteEdits()
+    {
+        spriteScanCancellation?.Cancel();
+        using var cancellation = new CancellationTokenSource(); spriteScanCancellation = cancellation;
+        string? folder = config.EnemySpritesFolder, game = config.GamePath;
+        spritePlan = null; spriteScanning = true; spriteScanStatus = "Checking edited PNGs… You can keep browsing or cancel the scan."; UpdateSpriteScanUi();
+        bool acquired = false;
+        try
+        {
+            await spriteScanGate.WaitAsync(cancellation.Token); acquired = true;
+            var service = SpriteService();
+            IProgress<(int Done, int Total)> progress = new Progress<(int Done, int Total)>(p =>
+            {
+                if (spriteScanCancellation != cancellation || cancellation.IsCancellationRequested) return;
+                spriteScanStatus = $"Checking edited PNGs · {p.Done} of {p.Total}. You can keep browsing."; UpdateSpriteScanUi();
+            });
+            var report = await Task.Run(() => service.ScanFolder(folder ?? throw new IOException("Choose an edited folder first."), (done, total) => progress.Report((done, total)), cancellation.Token));
+            if (cancellation.IsCancellationRequested || game != config.GamePath || folder != config.EnemySpritesFolder) return false;
+            spritePlan = report.Plan;
+            spriteScanStatus = report.Plan == null ? $"Fix {report.Issues.Count} image issue(s) before applying. You can still browse and replace PNGs.\n" + string.Join("\n", report.Issues)
+                : $"{report.Plan.Changes.Count} pending updates · {report.Plan.HdSprites} HD sprites after apply. Edits are checked when you return to this app.";
+            return report.Plan != null;
+        }
+        catch (OperationCanceledException) { if (spriteScanCancellation == cancellation) spriteScanStatus = "Scan cancelled. Validate the folder when you're ready."; return false; }
+        catch (Exception error) { if (spriteScanCancellation == cancellation) spriteScanStatus = "Folder check needs attention: " + error.Message; return false; }
+        finally
+        {
+            if (acquired) spriteScanGate.Release();
+            if (spriteScanCancellation == cancellation) { spriteScanCancellation = null; spriteScanning = false; UpdateSpriteScanUi(); if (page == "Enemy Sprites" && game == config.GamePath && folder == config.EnemySpritesFolder) refreshSpriteRows?.Invoke(); }
+        }
     }
     void ReplaceEnemySprite(SpriteEntry? sprite)
     {
@@ -153,7 +199,7 @@ public partial class MainWindow
     }
     async Task ApplyEnemySprites() => await Run("Applying enemy sprite updates…", async () =>
     {
-        await CheckEnemySpriteEdits();
+        if (!await CheckEnemySpriteEdits()) return;
         var plan = spritePlan!;
         if (plan.Changes.Count == 0) return;
         var service = SpriteService(); var game = RequireEngine();

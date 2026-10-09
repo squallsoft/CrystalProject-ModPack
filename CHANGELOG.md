@@ -1,5 +1,11 @@
 # Changelog
 
+## Nonblocking sprite validation — 2026-10-09
+
+- Scan edited folders in the background with cancellation; keep navigation, searching and replacement controls available.
+- Show all invalid-image filenames and actionable dimension/file-size errors in a scrollable panel instead of repeated modal dialogs.
+- Keep Apply disabled for invalid folders; recheck corrected files and refuse oversized PNGs before loading their full contents.
+
 ## 10× enemy sprites — 2026-10-09
 
 - Accept uniform 10× PNG replacements alongside 1×, 2× and 4× images while retaining the original in-game size, atlas fit and portrait crops.
