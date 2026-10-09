@@ -7,7 +7,7 @@ using System.Text;
 namespace CrystalProjectModInstaller;
 
 internal record Selection(bool Music, bool Home, bool HdSprites = false);
-internal record InstallRecord(string GamePath, string GameVersion, string OriginalSha256, string BackupSha256, string InstallerVersion, Selection Mods, string OutputSha256, DateTime Timestamp, Dictionary<string,string>? RuntimeHashes = null);
+internal record InstallRecord(string GamePath, string GameVersion, string OriginalSha256, string BackupSha256, string InstallerVersion, Selection Mods, string OutputSha256, DateTime Timestamp, Dictionary<string,string>? RuntimeHashes = null, Dictionary<string,string>? HelperHashes = null);
 internal record LegacyFile(string Path, string Hash);
 internal record TransactionFile(string Name, bool Existed, string BeforeHash, string AfterHash);
 internal record Journal(string GamePath, string Work, TransactionFile[] Files);
@@ -174,7 +174,15 @@ internal sealed class Engine
         for (string? p = target; p != null && p.Length > Game.Length; p = Path.GetDirectoryName(p))
             if ((File.Exists(p) || Directory.Exists(p)) && (File.GetAttributes(p) & FileAttributes.ReparsePoint) != 0) throw new IOException("A managed deployment path is a link. No linked files will be changed.");
     }
-    static bool KnownHelper(string name, string hash) => hash == Convert.ToHexString(SHA256.HashData(Patches.Resource(name))).ToLowerInvariant() || (name == "CrystalProjectRandomMusic.dll" && (hash == LegacyRuntimeHash || hash == "e54d32438d0e266d8559a07816f68989096196c0cafea248a74b0458d7b412d8")) || (name == "CrystalProjectHomePoints.dll" && hash == "997d7be54518622a8047feb6a8c66ff77bbae4da348cab7d88dc7b9909bedbdd");
+    static bool KnownHelper(string name, string hash, Dictionary<string,string> installed) =>
+        hash == Convert.ToHexString(SHA256.HashData(Patches.Resource(name))).ToLowerInvariant()
+        || (installed.TryGetValue(name, out var recorded) && hash == recorded)
+        // Previously shipped helpers, verified against first-party runtime source.
+        || (name == "CrystalProjectRandomMusic.dll" && (hash == LegacyRuntimeHash
+            || hash == "e54d32438d0e266d8559a07816f68989096196c0cafea248a74b0458d7b412d8"
+            || hash == "f15436b50ebbe5f68542c4a95bcd156a7fe0b246e086fe1f40640f6b23f9392f"))
+        || (name == "CrystalProjectHomePoints.dll" && (hash == "997d7be54518622a8047feb6a8c66ff77bbae4da348cab7d88dc7b9909bedbdd"
+            || hash == "ff39394b03baee6e09aa898ce78bcf069716575cb1971a12c333fccf9a364ec1"));
     void ValidateHdSelection(Selection selection, Dictionary<string, string>? assets, Dictionary<string, string> hashes, bool currentHd)
     {
         SafeTarget(SpriteSizesName); string installed = Path.Combine(Game, SpriteSizesName);
@@ -236,6 +244,10 @@ internal sealed class Engine
             Patches.Build(Backup, output, selection.Music, selection.Home, selection.HdSprites);
             var files = new List<TransactionFile>();
             var runtimeHashes = new Dictionary<string,string>(Record()?.RuntimeHashes ?? []);
+            var installedRecord = Record();
+            var helperHashes = new Dictionary<string,string>(installedRecord?.OriginalSha256 == Patches.Original
+                && string.Equals(installedRecord.GamePath, Game, StringComparison.OrdinalIgnoreCase)
+                ? installedRecord.HelperHashes ?? [] : []);
             ValidateHdSelection(selection, runtimeAssets, runtimeHashes, supported.TryGetValue(current, out var currentMods) && currentMods.HdSprites);
             progress?.Report("Preparing music");
             foreach (var asset in runtimeAssets ?? [])
@@ -270,16 +282,18 @@ internal sealed class Engine
                 SafeTarget(rt.Item2);
                 if (!rt.Item1)
                 {
-                    if (File.Exists(target) && KnownHelper(rt.Item2, Patches.Hash(target))) files.Add(Snapshot(rt.Item2, target, null, work));
+                    if (File.Exists(target) && KnownHelper(rt.Item2, Patches.Hash(target), helperHashes)) files.Add(Snapshot(rt.Item2, target, null, work));
+                    helperHashes.Remove(rt.Item2);
                     continue;
                 }
                 File.WriteAllBytes(Path.Combine(after, rt.Item2), Patches.Resource(rt.Item2));
-                if (File.Exists(target) && !KnownHelper(rt.Item2, Patches.Hash(target)))
+                if (File.Exists(target) && !KnownHelper(rt.Item2, Patches.Hash(target), helperHashes))
                     throw new IOException("Unrecognized runtime DLL; it will not be overwritten: " + target);
                 files.Add(Snapshot(rt.Item2, target, Path.Combine(after, rt.Item2), work));
+                helperHashes[rt.Item2] = Patches.Hash(Path.Combine(after, rt.Item2));
             }
             files.Add(Snapshot("Crystal Project.exe", Exe, output, work));
-            var record = new InstallRecord(Game, "1.6.9.0", Patches.Original, Patches.Hash(Backup), Version, selection, Patches.Hash(output), DateTime.UtcNow, runtimeHashes);
+            var record = new InstallRecord(Game, "1.6.9.0", Patches.Original, Patches.Hash(Backup), Version, selection, Patches.Hash(output), DateTime.UtcNow, runtimeHashes, helperHashes);
             File.WriteAllText(Path.Combine(after, "manifest.json"), JsonSerializer.Serialize(record, Json));
             files.Add(Snapshot("manifest.json", Manifest, Path.Combine(after, "manifest.json"), work));
             Idle(); if (Patches.Hash(Exe) != current) throw new IOException("Game changed during patching.");

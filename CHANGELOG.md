@@ -1,5 +1,11 @@
 # Changelog
 
+## HD installer compatibility fix — 2026-10-09
+
+- Recognize verified music and Home Points helper DLLs from the previous manager build when installing HD support.
+- Record helper hashes after successful installation so later app builds can upgrade their own helpers while refusing externally modified DLLs.
+- Test migration from the installed older helpers on a private game copy, including preservation of music/Home Points and refusal of unknown DLLs.
+
 ## HD enemy sprites — 2026-10-09
 
 - Accept original, 2× and 4× PNGs in the same library; show resolution in previews and pending changes.

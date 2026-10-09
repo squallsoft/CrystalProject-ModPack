@@ -49,6 +49,13 @@ Refused(() => service.Apply(plan, engine.Idle, _ => throw new IOException("Unsup
 Check(!service.HasBackup && File.ReadAllBytes(live).SequenceEqual(original), "Failed renderer preflight leaves sprites and backup untouched");
 Refused(() => engine.Apply(new(false, false, true)), "HD executable cannot install without original-size metadata");
 engine.Apply(new(true, true));
+if (args.Length > 2)
+{
+    foreach (string helper in new[] { "CrystalProjectRandomMusic.dll", "CrystalProjectHomePoints.dll" })
+        File.Copy(Path.Combine(args[2], helper), Path.Combine(game, helper), true);
+    // Older releases had no helper ownership hashes in their manifests.
+    File.WriteAllText(engine.Manifest, System.Text.Json.JsonSerializer.Serialize(engine.Record()! with { HelperHashes = null }));
+}
 void Install(byte[] sizes)
 {
     string path = Path.Combine(root, "sprite-sizes.txt"); File.WriteAllBytes(path, sizes);
@@ -56,6 +63,25 @@ void Install(byte[] sizes)
 }
 service.Apply(plan, engine.Idle, Install);
 Check(engine.Inspect().Mods == new Selection(true, true, true) && File.Exists(Path.Combine(game, "CrystalProjectHDSprites.dll")), "HD apply composes renderer with installed music and Home Points");
+Check(engine.Record()!.HelperHashes!.Count == 3 && engine.Record()!.HelperHashes!.All(h => h.Value == Patches.Hash(Path.Combine(game, h.Key))), "Migration records exact helper ownership hashes for subsequent app upgrades");
+foreach (string helper in new[] { "CrystalProjectRandomMusic.dll", "CrystalProjectHomePoints.dll", "CrystalProjectHDSprites.dll" })
+{
+    string path = Path.Combine(game, helper); byte[] saved = File.ReadAllBytes(path);
+    File.AppendAllText(path, "outside edit"); string changed = Patches.Hash(path), exeHash = Patches.Hash(engine.Exe), spriteHash = Patches.Hash(live), manifestHash = Patches.Hash(engine.Manifest);
+    try
+    {
+        Refused(() => Install(plan.SizeCatalog), "Unrecognized or modified helper still refuses overwrite: " + helper);
+        Check(Patches.Hash(path) == changed && Patches.Hash(engine.Exe) == exeHash && Patches.Hash(live) == spriteHash && Patches.Hash(engine.Manifest) == manifestHash, "Rejected helper upgrade leaves all deployed files unchanged: " + helper);
+    }
+    finally { File.WriteAllBytes(path, saved); }
+}
+// Model a helper deployed by another build and recorded by the manager.
+string musicHelper = Path.Combine(game, "CrystalProjectRandomMusic.dll");
+File.AppendAllText(musicHelper, "previous build fixture");
+var previousRecord = engine.Record()!; previousRecord.HelperHashes!["CrystalProjectRandomMusic.dll"] = Patches.Hash(musicHelper);
+File.WriteAllText(engine.Manifest, System.Text.Json.JsonSerializer.Serialize(previousRecord));
+Install(plan.SizeCatalog);
+Check(File.ReadAllBytes(musicHelper).SequenceEqual(Patches.Resource("CrystalProjectRandomMusic.dll")), "Manager-owned previous helper build upgrades using its recorded hash");
 Check(service.InstalledHdCount() == 2 && service.InstalledSprites().Skip(2).Zip(entries.Skip(2)).All(p => p.First.Png.SequenceEqual(p.Second.Png)), "HD deployment preserves all original-size images");
 Check(File.ReadAllBytes(Path.Combine(game, Engine.SpriteSizesName)).SequenceEqual(plan.SizeCatalog), "Runtime receives original canvas dimensions for the full library");
 string savedRecord = Path.Combine(root, "preserved-record.json"), savedSizes = Path.Combine(root, "preserved-sizes.txt");
@@ -85,6 +111,7 @@ Check(fullHd.HdSprites == 273 && service.InstalledHdCount() == 273, "All 273 ene
 service.Restore(engine.Idle); Check(File.ReadAllBytes(live).SequenceEqual(original), "Full HD library restores byte-identical original archive");
 engine.Apply(new(false, true)); Check(engine.Inspect().Mods == new Selection(false, true) && !File.Exists(Path.Combine(game, "CrystalProjectHDSprites.dll")) && !File.Exists(Path.Combine(game, Engine.SpriteSizesName)), "Renderer removal clears owned helper and metadata while retaining Home Points");
 engine.Apply(new(false, false)); Check(Patches.Hash(engine.Exe) == Patches.Original, "Restoring vanilla returns exact executable after HD removal");
+Check(engine.Record()!.HelperHashes!.Count == 0, "Removed helpers clear their ownership records");
 Check(File.ReadAllBytes(args[1]).SequenceEqual(original), "Live Steam sprite archive remains unchanged");
 // A separate isolated fixture is used to execute patched methods in .NET Framework.
 string runtimeGame = Path.Combine(root, "runtime-game"); Directory.CreateDirectory(runtimeGame);

@@ -1,6 +1,7 @@
 param(
     [string]$GameDirectory = 'C:\Program Files (x86)\Steam\steamapps\common\Crystal Project',
     [string]$PristineExecutable,
+    [string]$PreviousRuntimeDirectory,
     [string]$Sdk
 )
 $ErrorActionPreference = 'Stop'
@@ -15,7 +16,9 @@ Push-Location $repo
 try {
     & $Sdk build src\CrystalProjectModManager -c Release
     if ($LASTEXITCODE) { throw 'Manager build failed' }
-    & $Sdk run --project tests\HDSprites -c Release -- $repo (Join-Path $GameDirectory 'Content\Textures\Monster.dat')
+    $testArguments = @($repo, (Join-Path $GameDirectory 'Content\Textures\Monster.dat'))
+    if ($PreviousRuntimeDirectory) { $testArguments += $PreviousRuntimeDirectory }
+    & $Sdk run --project tests\HDSprites -c Release -- @testArguments
     if ($LASTEXITCODE) { throw 'HD integration tests failed' }
     & $Sdk build tests\HDRuntime -c Release
     if ($LASTEXITCODE) { throw 'HD runtime test build failed' }

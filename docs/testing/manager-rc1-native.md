@@ -51,6 +51,8 @@ For every row test no replacement, one track, and three tracks. Listen through a
 
 ## Enemy sprites and HD rendering
 
+To test upgrades from an older manager, run `tools/test-hd-sprites.ps1 -PreviousRuntimeDirectory '<game folder containing the previous music and Home Points DLLs>'`. The test copies those first-party helpers into its private fixture, simulates a legacy manifest, installs HD while retaining both features, and checks that externally modified helpers remain protected. It does not write to the source game folder.
+
 - [ ] Extract all 273 PNGs, edit/import original-size, 2× and 4× images, and check filename search, previews and pending resolution labels.
 - [ ] Apply a mixed library. HD support installs automatically and original-size enemies retain their appearance and size.
 - [ ] Compare the same battle before/after HD replacement: enemy world size, positions, breathing animation, shadows, outline thickness, targeting/status indicators and damage effects.
