@@ -16,3 +16,4 @@ artifacts/
 *.tmp
 **/Backups/
 **/backups/
+/sprites/

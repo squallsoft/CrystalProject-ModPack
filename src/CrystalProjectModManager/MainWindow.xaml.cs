@@ -318,7 +318,7 @@ public partial class MainWindow : Window
         if (!ConfirmHomeOff(config.UnlimitedHomePoints)) return;
         await Run("Preparing…", async () =>
         {
-            var e = RequireEngine(); var selection = new Selection(config.MusicEnabled, config.UnlimitedHomePoints); SaveDraft();
+            var e = RequireEngine(); var selection = new Selection(config.MusicEnabled, config.UnlimitedHomePoints, e.Inspect().Mods?.HdSprites ?? false); SaveDraft();
             string work = Path.Combine(library.Store, "work", "music-" + Guid.NewGuid().ToString("N"));
             try
             {
@@ -346,7 +346,7 @@ public partial class MainWindow : Window
                 e.Recover(); var assets = new Dictionary<string,string>();
                 foreach (var pair in e.Record()?.RuntimeHashes ?? [])
                 {
-                    string source = pair.Key.EndsWith("config.json") ? Path.Combine(library.Store, "runtime", pair.Value + ".json") : library.TrackPath(pair.Value);
+                    string source = pair.Key.EndsWith("config.json") ? Path.Combine(library.Store, "runtime", pair.Value + ".json") : pair.Key == Engine.SpriteSizesName ? Path.Combine(library.Store, "runtime", pair.Value + ".txt") : library.TrackPath(pair.Value);
                     if (!File.Exists(source) || MusicLibrary.Hash(source) != pair.Value) throw new IOException("Repair needs a verified managed copy: " + Path.GetFileName(pair.Key) + ". Locate missing music before trying again.");
                     assets[pair.Key] = source;
                 }
@@ -389,6 +389,7 @@ public partial class MainWindow : Window
         double dpi = Environment.GetCommandLineArgs().Contains("--dpi150") ? 144 : 96;
         if (Environment.GetCommandLineArgs().Contains("--verify-browser")) VerifyMusicBrowser();
         if (config.GamePath != null) await LoadEnemySprites();
+        if (config.EnemySpritesFolder != null && Environment.GetCommandLineArgs().Contains("--validate-sprites")) await ValidateEnemySprites();
         foreach (string name in new[] { "Home", "Music", "Enemy Sprites", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {
             ShowPage(name); await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); UpdateLayout();

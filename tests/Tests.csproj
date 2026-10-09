@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
 <ItemGroup><Compile Include="../src/Installer/Patches.cs" Link="Patches.cs"/><Compile Include="../src/Installer/Engine.cs" Link="Engine.cs"/><PackageReference Include="Mono.Cecil" Version="0.11.6"/></ItemGroup>
-<ItemGroup><EmbeddedResource Include="../src/Runtime/bin/Release/net462/CrystalProjectRandomMusic.dll" LogicalName="CrystalProjectRandomMusic.dll"/><EmbeddedResource Include="../src/Runtime/bin/Release/net462/CrystalProjectHomePoints.dll" LogicalName="CrystalProjectHomePoints.dll"/><EmbeddedResource Include="../docs/cleanup-allowlist.json" LogicalName="cleanup.json"/></ItemGroup>
-<ItemGroup><Compile Remove="Runtime/**/*.cs;Manager/**/*.cs;MusicRuntime/**/*.cs"/></ItemGroup>
+<ItemGroup><EmbeddedResource Include="../src/Runtime/bin/Release/net462/CrystalProjectRandomMusic.dll" LogicalName="CrystalProjectRandomMusic.dll"/><EmbeddedResource Include="../src/Runtime/bin/Release/net462/CrystalProjectHomePoints.dll" LogicalName="CrystalProjectHomePoints.dll"/><EmbeddedResource Include="../src/Runtime/bin/Release/net462/CrystalProjectHDSprites.dll" LogicalName="CrystalProjectHDSprites.dll"/><EmbeddedResource Include="../docs/cleanup-allowlist.json" LogicalName="cleanup.json"/></ItemGroup>
+<ItemGroup><Compile Remove="Runtime/**/*.cs;Manager/**/*.cs;MusicRuntime/**/*.cs;Sprites/**/*.cs;HDSprites/**/*.cs;HDRuntime/**/*.cs"/></ItemGroup>
+<ItemGroup><ProjectReference Include="../src/Runtime/HDSprites.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true"/></ItemGroup>
 </Project>

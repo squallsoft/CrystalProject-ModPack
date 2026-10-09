@@ -32,10 +32,10 @@ internal static class Patches
         var first = m.Body.Instructions[0]; var il = m.Body.GetILProcessor();
         foreach (var i in prefix) il.InsertBefore(first, i);
     }
-    public static void Build(string original, string output, bool music, bool home)
+    public static void Build(string original, string output, bool music, bool home, bool hdSprites = false)
     {
         if (Hash(original) != Original) throw new InvalidOperationException("Pristine backup is corrupt or unsupported.");
-        if (!music && !home) { File.Copy(original, output, true); return; }
+        if (!music && !home && !hdSprites) { File.Copy(original, output, true); return; }
         using var asm = AssemblyDefinition.ReadAssembly(original, new ReaderParameters { InMemory = true });
         var module = asm.MainModule;
         if (music)
@@ -103,8 +103,53 @@ internal static class Patches
                 }
             }
         }
+        if (hdSprites) PatchHDSprites(module);
         asm.Write(output, new WriterParameters { DeterministicMvid = true, Timestamp = 0 });
-        Verify(original, output, music, home);
+        Verify(original, output, music, home, hdSprites);
+    }
+    static void PatchHDSprites(ModuleDefinition module)
+    {
+        using var runtime = AssemblyDefinition.ReadAssembly(new MemoryStream(Resource("CrystalProjectHDSprites.dll")));
+        var rt = Type(runtime.MainModule, "CrystalProjectHDSprites.Runtime");
+        MethodReference Hook(string name) => module.ImportReference(Method(rt, name));
+        var lookup = Method(Type(module, "Sang.Battle.CBattle"), "GetMonsterTexture"); LongBranches(lookup);
+        var calls = lookup.Body.Instructions.Where(i => i.Operand is MethodReference r && r.DeclaringType.FullName == "Sang.Gfx.Cache" && r.Name == "Texture").ToArray();
+        if (calls.Length != 3) throw new InvalidOperationException("Unexpected monster texture lookup.");
+        foreach (var call in calls)
+        {
+            var textureType = ((MethodReference)call.Operand).ReturnType; var il = lookup.Body.GetILProcessor();
+            il.InsertBefore(call, Instruction.Create(OpCodes.Dup));
+            var load = Instruction.Create(OpCodes.Ldarg_0); il.InsertAfter(call, load);
+            var register = Instruction.Create(OpCodes.Call, Hook("Register")); il.InsertAfter(load, register);
+            il.InsertAfter(register, Instruction.Create(OpCodes.Castclass, textureType));
+        }
+        void Dimensions(MethodDefinition method, int expected, int skip = 0)
+        {
+            var getters = method.Body.Instructions.Where(i => i.Operand is MethodReference r && r.DeclaringType.FullName == "Microsoft.Xna.Framework.Graphics.Texture2D" && r.Name is "get_Width" or "get_Height").ToArray();
+            if (getters.Length != expected) throw new InvalidOperationException("Unexpected sprite dimension reads: " + method.FullName);
+            foreach (var getter in getters.Skip(skip)) { string name = ((MethodReference)getter.Operand).Name; getter.OpCode = OpCodes.Call; getter.Operand = Hook(name == "get_Width" ? "LogicalWidth" : "LogicalHeight"); }
+        }
+        var battler = Type(module, "Sang.Battle.BattlerMonster");
+        Dimensions(Method(battler, "SetMonsterTexture"), 2);
+        Dimensions(Method(battler, "RefreshScreenPos", 1), 2);
+        Dimensions(Method(Type(module, "Sang.Battle.Mesh.MeshMonster"), "Render"), 2);
+        var atlas = Type(module, "Sang.Window.Field.Atlas.WindowMonsterDetails"); var refresh = Method(atlas, "RefreshContent"); LongBranches(refresh);
+        // Texture origin remains in real pixels; fit calculations use the original canvas.
+        Dimensions(refresh, 6, skip: 2);
+        foreach (var getter in refresh.Body.Instructions.Where(i => i.Operand is MethodReference r && r.DeclaringType.FullName == "Microsoft.Xna.Framework.Graphics.Texture2D" && r.Name is "get_Width" or "get_Height").ToArray())
+        { string name = ((MethodReference)getter.Operand).Name; getter.OpCode = OpCodes.Call; getter.Operand = Hook(name == "get_Width" ? "OriginWidth" : "OriginHeight"); }
+        var finalScale = refresh.Body.Instructions.Where(i => i.OpCode == OpCodes.Stfld && i.Operand is FieldReference f && f.Name == "_monsterTextureScale").Last();
+        var texture = atlas.Fields.Single(f => f.Name == "_monsterTexture"); var atlasIl = refresh.Body.GetILProcessor();
+        atlasIl.InsertBefore(finalScale, Instruction.Create(OpCodes.Ldarg_0)); atlasIl.InsertBefore(finalScale, Instruction.Create(OpCodes.Ldfld, texture)); atlasIl.InsertBefore(finalScale, Instruction.Create(OpCodes.Call, Hook("RenderScale")));
+        var portrait = Method(Type(module, "Sang.Window.WindowHelper"), "DrawMonsterPortrait", 6); LongBranches(portrait);
+        var regions = portrait.Body.Instructions.Where(i => i.OpCode == OpCodes.Newobj && i.Operand is MethodReference r && r.DeclaringType is GenericInstanceType g && g.ElementType.FullName == "System.Nullable`1" && g.GenericArguments[0].FullName == "Microsoft.Xna.Framework.Rectangle").ToArray();
+        if (regions.Length != 2) throw new InvalidOperationException("Unexpected monster portrait rectangles.");
+        foreach (var region in regions)
+        {
+            var rectangle = ((GenericInstanceType)((MethodReference)region.Operand).DeclaringType).GenericArguments[0]; var il = portrait.Body.GetILProcessor();
+            il.InsertBefore(region, Instruction.Create(OpCodes.Box, rectangle)); il.InsertBefore(region, Instruction.Create(OpCodes.Ldarg_1));
+            il.InsertBefore(region, Instruction.Create(OpCodes.Call, Hook("ScaleRegion"))); il.InsertBefore(region, Instruction.Create(OpCodes.Unbox_Any, rectangle));
+        }
     }
     static string Body(MethodDefinition m)
     {
@@ -112,12 +157,13 @@ internal static class Patches
         string Operand(object? o) => o switch { Instruction i => "@" + m.Body.Instructions.IndexOf(i), Instruction[] a => string.Join(",", a.Select(i => Operand(i))), _ => o?.ToString() ?? "" };
         return string.Join("\n", m.Body.Instructions.Select(i => i.OpCode + " " + Operand(i.Operand)));
     }
-    public static void Verify(string original, string output, bool music, bool home)
+    public static void Verify(string original, string output, bool music, bool home, bool hdSprites = false)
     {
         using var before = AssemblyDefinition.ReadAssembly(original);
         using var after = AssemblyDefinition.ReadAssembly(output);
         var a = Types(after.MainModule.Types).ToDictionary(t => t.FullName);
         var allowed = new HashSet<string>();
+        if (hdSprites) foreach (var name in new[] { "Sang.Battle.CBattle::GetMonsterTexture", "Sang.Battle.BattlerMonster::SetMonsterTexture", "Sang.Battle.BattlerMonster::RefreshScreenPos", "Sang.Battle.Mesh.MeshMonster::Render", "Sang.Window.Field.Atlas.WindowMonsterDetails::RefreshContent" }) allowed.Add(name);
         if (music) foreach (var n in new[] { "Update", "SaveBookmark", "PlayBookmark" }) allowed.Add("Sang.Audio.NAudio.NAudioMusicManager::" + n);
         if (home)
         {
@@ -133,14 +179,15 @@ internal static class Patches
             foreach (var m in t.Methods)
             {
                 var n = other.Methods.Single(x => x.FullName == m.FullName);
-                if (!allowed.Contains(t.FullName + "::" + m.Name) && Body(m) != Body(n)) throw new InvalidOperationException("Unrelated method changed: " + m.FullName);
+                bool portrait = hdSprites && t.FullName == "Sang.Window.WindowHelper" && m.Name == "DrawMonsterPortrait" && m.Parameters.Count == 6;
+                if (!portrait && !allowed.Contains(t.FullName + "::" + m.Name) && Body(m) != Body(n)) throw new InvalidOperationException("Unrelated method changed: " + m.FullName);
                 if (n.HasBody) foreach (var i in n.Body.Instructions)
                 {
                     if (i.Operand is Instruction target && !n.Body.Instructions.Contains(target)) throw new InvalidOperationException("Invalid branch.");
                 }
             }
         }
-        foreach (var item in new[] { (music, "CrystalProjectRandomMusic"), (home, "CrystalProjectHomePoints") })
+        foreach (var item in new[] { (music, "CrystalProjectRandomMusic"), (home, "CrystalProjectHomePoints"), (hdSprites, "CrystalProjectHDSprites") })
             if (after.MainModule.AssemblyReferences.Any(r => r.Name == item.Item2) != item.Item1) throw new InvalidOperationException("Runtime reference mismatch.");
         if (home && !Body(Method(Type(after.MainModule, "Sang.PartyData.HomePointCollection"), "Set")).Contains("BeforeSet")) throw new InvalidOperationException("Expansion hook missing.");
     }

@@ -1,5 +1,13 @@
 # Changelog
 
+## HD enemy sprites — 2026-10-09
+
+- Accept original, 2× and 4× PNGs in the same library; show resolution in previews and pending changes.
+- Automatically compose an exact-build HD rendering patch with music and Home Points before deploying HD images, using an original-size catalog rather than resizing image pixels.
+- Preserve battle sizes, indicators, shader outline width, atlas fit/centers, and portrait crops, including alternate textures and odd-sized canvases.
+- Added Install/Remove HD Support, retained the renderer through Home Apply, and blocked removal/vanilla restore while HD textures remain.
+- Verify all eight patch combinations, actual .NET Framework texture lookup and battle sizing, mixed and full-library HD updates, and exact restoration on private game copies. Native visual/performance acceptance remains pending.
+
 ## Enemy sprite tools — 2026-10-09
 
 - Added Enemy Sprites with search, PNG preview, full archive extraction, edited-folder validation, single PNG replacement, and bulk apply.

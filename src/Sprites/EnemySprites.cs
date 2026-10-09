@@ -10,8 +10,8 @@ public sealed record SpriteEntry(string Name, byte[] Png, int Width, int Height)
 {
     public string Filename => Name + ".png";
 }
-public sealed record SpriteChange(string Name, string Filename, int Width, int Height);
-public sealed record SpritePlan(string ArchiveHash, string Workspace, IReadOnlyList<SpriteChange> Changes, byte[] Archive);
+public sealed record SpriteChange(string Name, string Filename, int Width, int Height, int Scale = 1);
+public sealed record SpritePlan(string ArchiveHash, string Workspace, IReadOnlyList<SpriteChange> Changes, byte[] Archive, byte[] SizeCatalog, int HdSprites);
 public sealed record SpriteExport(int SchemaVersion, string SourceArchiveHash, SpriteExportEntry[] Sprites);
 public sealed record SpriteExportEntry(string Filename, int Width, int Height, string Sha256);
 public sealed record SpriteState(string GamePath, string OriginalHash, string AppliedHash, string? PendingHash = null);
@@ -65,7 +65,7 @@ public sealed class EnemySprites
     }
     public static (int Width, int Height) ValidatePng(byte[] png)
     {
-        if (png.Length < 33 || !png.AsSpan(0, 8).SequenceEqual(new byte[] { 137,80,78,71,13,10,26,10 }))
+        if (png.Length < 33 || png.Length > 32 * 1024 * 1024 || !png.AsSpan(0, 8).SequenceEqual(new byte[] { 137,80,78,71,13,10,26,10 }))
             throw new InvalidDataException("Choose a valid PNG image; renaming another format does not convert it.");
         int width = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4));
         int height = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20, 4));
@@ -124,9 +124,22 @@ public sealed class EnemySprites
         if (stream.Position != stream.Length) throw new InvalidDataException("Unexpected trailing sprite archive data.");
         return sprites;
     }
-    public static byte[] Rebuild(byte[] source, IReadOnlyDictionary<string, byte[]> replacements)
+    public static int Scale(int width, int height, int originalWidth, int originalHeight)
+    {
+        foreach (int factor in new[] { 1, 2, 4 }) if (width == originalWidth * factor && height == originalHeight * factor) return factor;
+        throw new InvalidDataException($"Use a {originalWidth} × {originalHeight}, {originalWidth * 2} × {originalHeight * 2}, or {originalWidth * 4} × {originalHeight * 4} PNG (1×, 2×, or 4×).");
+    }
+    public static byte[] SizeCatalog(IReadOnlyList<SpriteEntry> originals) => Encoding.UTF8.GetBytes("CrystalProjectHDSprites:1\n" + string.Join("\n", originals.Select(e => $"Monster/{e.Name}|{e.Width}|{e.Height}")) + "\n");
+    public byte[] OriginalSizeCatalog() => Locked(() => SizeCatalog(Parse(Baseline(Read(ArchivePath)))));
+    public int InstalledHdCount() => Locked(() =>
+    {
+        byte[] live = Read(ArchivePath); var original = Parse(Baseline(live)).ToDictionary(e => e.Name);
+        return Parse(live).Count(e => Scale(e.Width, e.Height, original[e.Name].Width, original[e.Name].Height) > 1);
+    });
+    public static byte[] Rebuild(byte[] source, IReadOnlyDictionary<string, byte[]> replacements, IReadOnlyList<SpriteEntry>? originals = null)
     {
         var entries = Parse(source);
+        var baseline = (originals ?? entries).ToDictionary(e => e.Name);
         if (replacements.Keys.Any(name => !entries.Any(e => e.Name == name))) throw new InvalidDataException("Unknown enemy sprite replacement.");
         if (replacements.Count == 0) return source.ToArray();
         using var output = new MemoryStream(); using var writer = new BinaryWriter(output, Encoding.UTF8, leaveOpen: true);
@@ -136,7 +149,7 @@ public sealed class EnemySprites
         {
             byte[] png = replacements.TryGetValue(entry.Name, out var replacement) ? replacement : entry.Png;
             var size = ValidatePng(png);
-            if (size != (entry.Width, entry.Height)) throw new InvalidDataException($"{entry.Filename}: keep the original {entry.Width} × {entry.Height} dimensions.");
+            Scale(size.Width, size.Height, baseline[entry.Name].Width, baseline[entry.Name].Height);
             writer.Write(entry.Name.Length); writer.Write(entry.Name.ToCharArray()); writer.Write(png.Length); writer.Write(png);
             if (output.Length > MaxArchiveBytes) throw new InvalidDataException("Updated sprite archive is too large.");
         }
@@ -144,7 +157,9 @@ public sealed class EnemySprites
     }
     T Locked<T>(Func<T> action)
     {
-        using var mutex = new Mutex(false, "Local\\CrystalProjectEnemySprites-" + key);
+        // Share the patch engine's mutex so renderer installation/removal cannot race
+        // an archive replacement. Callback-based engine operations are reentrant.
+        using var mutex = new Mutex(false, "Local\\CrystalProjectModInstaller-" + key.ToUpperInvariant());
         bool acquired;
         try { acquired = mutex.WaitOne(0); } catch (AbandonedMutexException) { acquired = true; }
         if (!acquired) throw new IOException("Another enemy sprite operation is in progress.");
@@ -215,19 +230,28 @@ public sealed class EnemySprites
         for (int i = 0; i < files.Length; i++)
         {
             var entry = known[Path.GetFileName(files[i])]; byte[] png = Read(files[i]); var size = ValidatePng(png);
-            if (size != (entry.Width, entry.Height)) throw new InvalidDataException($"{entry.Filename}: expected {entry.Width} × {entry.Height}, found {size.Width} × {size.Height}.");
-            if (!png.AsSpan().SequenceEqual(installed[entry.Name].Png)) { replacements[entry.Name] = png; changes.Add(new(entry.Name, entry.Filename, entry.Width, entry.Height)); }
+            int scale = Scale(size.Width, size.Height, entry.Width, entry.Height);
+            if (!png.AsSpan().SequenceEqual(installed[entry.Name].Png)) { replacements[entry.Name] = png; changes.Add(new(entry.Name, entry.Filename, size.Width, size.Height, scale)); }
             progress?.Invoke(i + 1, files.Length);
         }
-        return new SpritePlan(Hash(live), folder, changes, Rebuild(live, replacements));
+        byte[] updated = Rebuild(live, replacements, entries); var baseline = entries.ToDictionary(e => e.Name);
+        int hd = Parse(updated).Count(e => Scale(e.Width, e.Height, baseline[e.Name].Width, baseline[e.Name].Height) > 1);
+        return new SpritePlan(Hash(live), folder, changes, updated, SizeCatalog(entries), hd);
     });
-    public void Apply(SpritePlan plan, Action ensureGameClosed) => Locked(() =>
+    public void Apply(SpritePlan plan, Action ensureGameClosed, Action<byte[]>? ensureHdRendering = null) => Locked(() =>
     {
         ensureGameClosed(); byte[] live = Read(ArchivePath); var state = State(live);
         if (Hash(live) != plan.ArchiveHash) throw new IOException("Enemy sprites changed after validation. Validate the folder again.");
-        var current = Parse(live); var updated = Parse(plan.Archive);
-        if (current.Count != updated.Count || current.Zip(updated).Any(p => p.First.Name != p.Second.Name || p.First.Width != p.Second.Width || p.First.Height != p.Second.Height))
+        var original = Parse(state != null ? Read(BackupPath) : live); var updated = Parse(plan.Archive);
+        if (original.Count != updated.Count || original.Zip(updated).Any(p => p.First.Name != p.Second.Name))
             throw new InvalidDataException("Updated archive does not match this installation.");
+        var factors = original.Zip(updated).Select(p => Scale(p.Second.Width, p.Second.Height, p.First.Width, p.First.Height)).ToArray();
+        bool hd = factors.Any(factor => factor > 1);
+        if (hd)
+        {
+            if (ensureHdRendering == null) throw new IOException("HD sprites require the game's HD rendering patch. Apply them through the manager.");
+            ensureHdRendering(SizeCatalog(original));
+        }
         if (plan.Changes.Count == 0) return 0;
         SafePath(Store); Directory.CreateDirectory(Store);
         if (state == null)

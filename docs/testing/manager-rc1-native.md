@@ -45,9 +45,20 @@ For every row test no replacement, one track, and three tracks. Listen through a
 - [ ] Preview Original on area, battle, title, victory, and ambience cues; pause/seek/stop/replay and volume work. Replacement pools stay unchanged. Switch back to a replacement preview and verify Previous/Next work again.
 - [ ] One-track and large pools, missing/invalid file, Unicode and long filenames.
 - [ ] Preview and editor changes do not modify deployed game files until Apply.
-- [ ] All seven pages at 100%, 150%, 200% Windows DPI, small screen, resized window.
+- [ ] All eight pages at 100%, 150%, 200% Windows DPI, small screen, resized window.
 - [ ] Keyboard traversal, focus visibility, search/filter empty states, loading, disabled actions and error dialogs.
 - [ ] Pool editing remains accessible at minimum window size.
+
+## Enemy sprites and HD rendering
+
+- [ ] Extract all 273 PNGs, edit/import original-size, 2× and 4× images, and check filename search, previews and pending resolution labels.
+- [ ] Apply a mixed library. HD support installs automatically and original-size enemies retain their appearance and size.
+- [ ] Compare the same battle before/after HD replacement: enemy world size, positions, breathing animation, shadows, outline thickness, targeting/status indicators and damage effects.
+- [ ] Check atlas detail sizes/centers and portrait crops, including odd-sized sprites and the alternate textures selected by the profanity filter.
+- [ ] Verify music and Home Points with HD support, then change each executable feature independently. Home Apply retains HD support.
+- [ ] Restart through Steam and reload a test save. Check 2×/4× image detail and performance at normal and high display resolutions; record GPU and VRAM use.
+- [ ] Renderer removal and Restore Vanilla are refused while HD images remain. Restore Backed-Up Sprites, remove HD support, and confirm original visuals and retained music/Home Points.
+- [ ] A Steam verification/update or external texture modification stops stale apply/restore operations without overwriting outside changes.
 
 ## Home Points
 
