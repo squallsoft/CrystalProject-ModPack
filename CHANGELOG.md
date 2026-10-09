@@ -1,5 +1,13 @@
 # Changelog
 
+## Enemy sprite tools — 2026-10-09
+
+- Added Enemy Sprites with search, PNG preview, full archive extraction, edited-folder validation, single PNG replacement, and bulk apply.
+- Discovered and round-trip tested all 273 installed 1.6.9 enemy PNG textures.
+- Preserve sprite names, dimensions, timestamp table, and every unchanged image; reject corrupt PNGs, unsafe paths, mismatched folders, and outside edits.
+- Keep verified installation-specific backups, apply archives atomically, recover interrupted state updates, and restore byte-identical originals without removing edited artwork.
+- Sprite Apply/Restore are separate from executable/music/Home Points actions; native battle visual acceptance remains pending.
+
 ## Manager UI update — 2026-10-09
 
 - Added All songs / Replaced / Not replaced filters and alphabetical or replacement-status sorting, with visible cue counts.

@@ -41,7 +41,7 @@ public partial class MainWindow : Window
         int render = Array.IndexOf(args, "--render"); renderDirectory = render >= 0 && args.Length > render + 1 ? Path.GetFullPath(args[render + 1]) : null;
         if (renderDirectory != null) { ShowInTaskbar = false; WindowStartupLocation = WindowStartupLocation.Manual; Left = -10000; }
         library = new(renderDirectory == null ? null : Path.Combine(renderDirectory, "qa-data"));
-        foreach (string label in new[] { "Home", "Music", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
+        foreach (string label in new[] { "Home", "Music", "Enemy Sprites", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {
             var button = Button(label, () => ShowPage(label)); button.HorizontalContentAlignment = HorizontalAlignment.Left; button.Padding = new(12, 9, 12, 9); button.Margin = new(0, 0, 10, 6); button.FontSize = 13; button.Tag = label; Navigation.Children.Add(button);
         }
@@ -97,12 +97,19 @@ public partial class MainWindow : Window
     void ShowPage(string name)
     {
         if (busy) return; page = name; PageTitle.Text = name;
+        PreviewBar.Visibility = name == "Enemy Sprites" && player.FilePath == null ? Visibility.Collapsed : Visibility.Visible;
         cueList = trackList = null;
         foreach (Button b in Navigation.Children) b.Background = Brush((string)b.Tag == name ? "#28514F" : "#142430");
         PageSubtitle.Text = name switch { "Music" => "Make the soundtrack your own. Single tracks or random pools, for every cue.", "Home" => "Your game, your soundtrack, your destinations.", "Home Points" => "More places to return to, with the game's Enhanced Home Point option.", "Backups & Repair" => "Verified originals and recovery, kept outside your Steam installation.", _ => "Crystal Project Mod Manager · Development preview" };
-        UIElement content = name switch { "Home" => HomePage(), "Music" => MusicPage(), "Home Points" => HomePointPage(), "Installation / Game" => GamePage(), "Backups & Repair" => BackupPage(), "Settings" => SettingsPage(), _ => AboutPage() };
-        PageContent.Content = name == "Music" ? content : new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        UIElement content = name switch { "Home" => HomePage(), "Music" => MusicPage(), "Enemy Sprites" => EnemySpritesPage(), "Home Points" => HomePointPage(), "Installation / Game" => GamePage(), "Backups & Repair" => BackupPage(), "Settings" => SettingsPage(), _ => AboutPage() };
+        PageContent.Content = name == "Music" || name == "Enemy Sprites" && ActualHeight >= 700 ? content : new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Status.Text = "Changes are saved as a draft. Apply Changes updates the game.";
+        if (name == "Enemy Sprites")
+        {
+            PageSubtitle.Text = "Extract, preview, and replace your entire enemy sprite library.";
+            Status.Text = "Enemy sprites use Apply Sprite Updates on this page; Home Apply Changes handles music and Home Points.";
+            if (config.GamePath != null && spriteScanGame != config.GamePath) _ = LoadEnemySprites();
+        }
     }
     UIElement HomePage()
     {
@@ -381,7 +388,8 @@ public partial class MainWindow : Window
         }
         double dpi = Environment.GetCommandLineArgs().Contains("--dpi150") ? 144 : 96;
         if (Environment.GetCommandLineArgs().Contains("--verify-browser")) VerifyMusicBrowser();
-        foreach (string name in new[] { "Home", "Music", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
+        if (config.GamePath != null) await LoadEnemySprites();
+        foreach (string name in new[] { "Home", "Music", "Enemy Sprites", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {
             ShowPage(name); await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); UpdateLayout();
             var bitmap = new RenderTargetBitmap((int)(ActualWidth * dpi / 96), (int)(ActualHeight * dpi / 96), dpi, dpi, PixelFormats.Pbgra32); bitmap.Render(this);

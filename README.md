@@ -5,6 +5,7 @@
 Manage your own soundtrack and Unlimited Home Points in one desktop app. This build is ready for local acceptance testing; **native gameplay validation is still pending**. It has not been uploaded as a new public release.
 
 - Replace any of the **71 discovered music cues**: exploration, battle, boss, victory, story, title, and special themes. Seven ambience cues are also available.
+- Extract and bulk-replace all **273 enemy sprites** from the installed `Monster.dat` archive, with PNG previews and verified backup restoration.
 - Give each cue one track or a random pool. Empty or disabled pools play original music.
 - Search by cue name, area, original title, or identifier. Filter by **All songs**, **Replaced**, or **Not replaced**, and sort alphabetically or put either replacement status first. Regions sharing one game cue share one replacement pool.
 - Preview with play/pause, stop, seek, previous/next, and volume.
@@ -56,6 +57,21 @@ Select a cue and choose **Preview Original** to hear its default game music or a
 
 Draft edits are saved automatically and reach the game only after **Apply Changes**. Disable all replacement music in Settings or clear individual pools to restore original music while keeping Home Points enabled.
 
+## Enemy sprites
+
+1. Select your game folder in **Installation / Game**, then open **Enemy Sprites**. The manager reads all textures in `Content/Textures/Monster.dat`.
+2. Choose **Extract All Sprites** and a parent folder. The manager creates a new editing folder containing every original PNG and `sprites.json`.
+3. Edit any or all PNGs in your image editor. Keep the extracted filenames and original canvas dimensions; preserve transparency for clean edges. **Replace Selected PNG** also imports a single prepared replacement into the editing folder. Search and select a sprite to preview its editing-folder image.
+4. Choose **Validate Edited Folder**. The manager decodes every supplied PNG, checks its dimensions, and identifies files differing from the currently installed sprites. Missing PNGs leave their installed sprite unchanged; unknown PNG filenames are rejected. Use **Choose Edited Folder** to reconnect an existing export.
+5. Close Crystal Project and choose **Apply N Sprite Updates**. This applies the validated snapshot; validate again after further artwork edits. The archive is replaced atomically, retaining every unchanged sprite and its metadata. The first update saves a verified backup outside Steam.
+6. **Restore Backed-Up Sprites** restores the exact archive captured before the first manager sprite update. Your edited PNGs stay in the editing folder. Extraction after updates still exports the backed-up originals.
+
+Sprite updates have their own Apply and Restore controls on the Enemy Sprites page. Home's **Apply Changes** and **Restore Vanilla** handle music/Home Points and do not change the sprite archive. Restore sprites separately before uninstalling. Backups are stored under `%LOCALAPPDATA%/CrystalProjectModManager/EnemySprites/`, separately for each installation.
+
+Externally changed sprite archives and corrupted backups are refused; unknown archive formats are never written. A workspace must match the installation's source archive. If Steam updates or another tool changes the archive, preserve your artwork and backup before reconciling it; the manager will not silently replace those changes. The backup captures the installed archive at the first update, including any existing edits from other tools.
+
+The automated round trip is verified on a private copy of the 1.6.9 archive; native battle/atlas visual acceptance remains pending. Extraction and tests keep game artwork local and never add it to this repository or app package.
+
 ## Unlimited Home Points
 
 Check **Unlimited Home Points** and Apply. Enable **Enhanced Home Point** in the game's assist options. Set the first three destinations normally, then continue using **New Home Point Slot**. Storage grows only when needed; destinations remain in existing saves.
@@ -91,6 +107,8 @@ To uninstall: close game, Restore Vanilla, optionally clean legacy files, then d
 Use a .NET 8 SDK. Build with `./tools/build-manager.ps1`; it also discovers the private SDK under `artifacts/dotnet`.
 
 After a Release build, run the isolated Music browser checks and render all pages with `dotnet src/CrystalProjectModManager/bin/Release/net8.0-windows/CrystalProjectModManager.dll --render artifacts/ui-check --verify-browser`. Add `--small --dpi150` to check the minimum window size at a 150% render scale. Results are written to `music-browser-checks.txt` beside the screenshots; configuration uses an isolated `qa-data` folder.
+
+Run sprite tests with `./tools/test-sprites.ps1`. To additionally check the installed archive on a private copy, pass `-Archive 'C:/Program Files (x86)/Steam/steamapps/common/Crystal Project/Content/Textures/Monster.dat'`. Sprite tests generate their own PNG fixtures and never write to the supplied archive.
 
 Run tests with your supported pristine executable and a developer FFmpeg executable that generates original test tones:
 

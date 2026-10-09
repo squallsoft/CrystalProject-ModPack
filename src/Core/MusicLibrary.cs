@@ -26,6 +26,7 @@ public sealed class Configuration
     public Dictionary<string, LibraryTrack> Library { get; set; } = [];
     public string? GamePath { get; set; }
     public double PreviewVolume { get; set; } = 0.65;
+    public string? EnemySpritesFolder { get; set; }
 }
 public sealed class MusicLibrary
 {
@@ -119,7 +120,7 @@ public sealed class MusicLibrary
     public static void Export(Configuration c, string path)
     {
         Validate(c); var portable = Parse(JsonSerializer.Serialize(c, Json));
-        portable.GamePath = null; foreach (var track in portable.Library.Values) track.ImportedFrom = null;
+        portable.GamePath = null; portable.EnemySpritesFolder = null; foreach (var track in portable.Library.Values) track.ImportedFrom = null;
         File.WriteAllText(path, JsonSerializer.Serialize(portable, Json));
     }
     public Dictionary<string,string> PrepareRuntime(Configuration c, string work)

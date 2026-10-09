@@ -11,7 +11,7 @@
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <StackPanel Margin="0,0,0,22"><TextBlock x:Name="PageTitle" FontSize="30" FontWeight="SemiBold"/><TextBlock x:Name="PageSubtitle" Foreground="#A6BAC5" Margin="0,8,0,0"/></StackPanel>
    <ContentControl x:Name="PageContent" Grid.Row="1"/>
-   <Border Grid.Row="2" Background="#192D39" BorderBrush="#304955" BorderThickness="1" CornerRadius="14" Padding="16" Margin="0,20,0,10">
+   <Border x:Name="PreviewBar" Grid.Row="2" Background="#192D39" BorderBrush="#304955" BorderThickness="1" CornerRadius="14" Padding="16" Margin="0,20,0,10">
     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <StackPanel Margin="0,0,14,0"><TextBlock Text="MUSIC PREVIEW" FontSize="10" FontWeight="Bold" Foreground="#65D6C0" Margin="0,0,0,5"/><TextBlock x:Name="NowPlaying" Text="Choose a track to listen" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Text, ElementName=NowPlaying}"/><TextBlock x:Name="PlaybackTime" Text="Select a track, then press play. Double-click also works." Foreground="#A6BAC5" FontSize="12" Margin="0,4,0,8"/></StackPanel>
