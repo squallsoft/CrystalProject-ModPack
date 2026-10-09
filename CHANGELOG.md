@@ -1,5 +1,12 @@
 # Changelog
 
+## Sprite stability budgets — 2026-10-09
+
+- Replace the 10× dimension cap with per-image, encoded-file/archive, and full-library decoded-memory limits. Singubean's 1139 × 1381 proportional image now passes.
+- Set import limits to 4096 pixels per axis, 4,194,304 pixels per image, 32 MiB per PNG, and 256 MiB each for encoded archives and estimated base RGBA library memory. Show nonblocking warnings above 128 MiB/library and at 8 MiB/image.
+- Show pixel-count growth, memory estimates and suggested dimensions near 10× pixels (about 3.16× dimensions); retain interactive scanning and exact restore.
+- Keep older installed images inspectable and their logical rendering sizes intact; independently recheck new deployment memory budgets before touching renderer or archive.
+
 ## Flexible sprite scales — 2026-10-09
 
 - Accept any proportional enlargement from 1× through 10×, including fractional factors and whole-pixel rounding.

@@ -47,8 +47,9 @@ namespace CrystalProjectHDSprites
                 {
                     int width = Actual(texture, "Width"), height = Actual(texture, "Height");
                     double lower = Math.Max(1, Math.Max((width - 0.5) / size.Width, (height - 0.5) / size.Height));
-                    double upper = Math.Min(10, Math.Min((width + 0.5) / size.Width, (height + 0.5) / size.Height));
-                    if (width >= size.Width && height >= size.Height && width <= size.Width * 10 && height <= size.Height * 10 && lower <= upper)
+                    double upper = Math.Min((width + 0.5) / size.Width, (height + 0.5) / size.Height);
+                    // Validation owns memory limits; registration preserves legacy HD texture sizes too.
+                    if (width >= size.Width && height >= size.Height && lower <= upper)
                         Sizes.Add(texture, size);
                 }
                 return texture;

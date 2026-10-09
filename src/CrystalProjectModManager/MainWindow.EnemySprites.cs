@@ -12,7 +12,7 @@ public partial class MainWindow
 {
     IReadOnlyList<SpriteEntry> enemySprites = [];
     HashSet<string> installedSpriteChanges = [];
-    Dictionary<string, double> installedSpriteScales = [];
+    Dictionary<string, double> installedSpritePixelGrowth = [];
     SpritePlan? spritePlan;
     CancellationTokenSource? spriteScanCancellation;
     readonly SemaphoreSlim spriteScanGate = new(1, 1);
@@ -45,7 +45,7 @@ public partial class MainWindow
         var hd = Button(installed?.HdSprites == true ? "HD Support Installed" : "Install HD Support", () => _ = InstallHdSprites()); hd.IsEnabled = loaded && installed != null && !installed.HdSprites;
         var removeHd = Button("Remove HD Support", () => _ = RemoveHdSprites()); removeHd.IsEnabled = installed?.HdSprites == true;
         var summary = Card(Stack(Text(loaded ? $"{enemySprites.Count} enemy sprites · {installedSpriteChanges.Count} updated" : "Read the enemy sprite library", 22),
-            Text("Use proportional PNGs from original size up to 10×, including fractional scales. Keep filenames, proportions, and transparency. HD rendering preserves the original in-game size.", 13, "#A6BAC5"),
+            Text("Keep filenames, proportions, and transparency. Aim around 10× original pixel count (about 3.16× dimensions). Limits: 4096 per axis, 4 million pixels/image, 32 MiB/PNG, 256 MiB estimated library texture memory.", 13, "#A6BAC5"),
             Actions(extract, Button("Choose Edited Folder", ChooseEnemySpriteFolder), validate, cancel, apply),
             Actions(Button("Reload Sprites", () => _ = LoadEnemySprites()), Button("Open Editing Folder", () => Open(config.EnemySpritesFolder)), restore, hd, removeHd),
             Text(config.EnemySpritesFolder ?? "No editing folder selected", 12, "#65D6C0"),
@@ -77,7 +77,8 @@ public partial class MainWindow
                 var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze(); image.Source = bitmap;
                 double factor = EnemySprites.Scale(bitmap.PixelWidth, bitmap.PixelHeight, row.Sprite.Width, row.Sprite.Height);
                 RenderOptions.SetBitmapScalingMode(image, factor > 1 ? BitmapScalingMode.HighQuality : BitmapScalingMode.NearestNeighbor);
-                detail.Text = $"{bitmap.PixelWidth} × {bitmap.PixelHeight} · {factor:0.###}×{(factor > 1 ? " HD" : " original size")} · {(edited ? "Editing folder" : "Original")}";
+                double growth = EnemySprites.PixelGrowth(bitmap.PixelWidth, bitmap.PixelHeight, row.Sprite.Width, row.Sprite.Height);
+                detail.Text = $"{bitmap.PixelWidth} × {bitmap.PixelHeight} · {growth:0.##}× original pixels · {(long)bitmap.PixelWidth * bitmap.PixelHeight * 4 / 1048576.0:0.##} MiB RGBA\nAbout 10× pixels: {(int)Math.Round(row.Sprite.Width * Math.Sqrt(10))} × {(int)Math.Round(row.Sprite.Height * Math.Sqrt(10))} · {(edited ? "Editing folder" : "Original")}";
                 replace.IsEnabled = config.EnemySpritesFolder != null;
             }
             catch (Exception error) { image.Source = null; detail.Text = "Preview unavailable: " + error.Message; replace.IsEnabled = config.EnemySpritesFolder != null; }
@@ -86,7 +87,7 @@ public partial class MainWindow
         {
             string? selected = selectedSpriteName;
             list.ItemsSource = (loaded ? enemySprites : []).Where(e => e.Name.Contains(spriteSearch, StringComparison.OrdinalIgnoreCase)).OrderBy(e => e.Name)
-                .Select(e => new SpriteRow(e, $"{e.Width} × {e.Height} base · {(spritePlan?.Changes.FirstOrDefault(c => c.Name == e.Name) is SpriteChange change ? $"Pending {change.Scale:0.###}×" : installedSpriteScales.GetValueOrDefault(e.Name, 1) > 1 ? $"{installedSpriteScales[e.Name]:0.###}× HD installed" : installedSpriteChanges.Contains(e.Name) ? "Updated" : "Original")}")).ToArray();
+                .Select(e => new SpriteRow(e, $"{e.Width} × {e.Height} base · {(spritePlan?.Changes.FirstOrDefault(c => c.Name == e.Name) is SpriteChange change ? $"Pending {EnemySprites.PixelGrowth(change.Width, change.Height, e.Width, e.Height):0.##}× pixels" : installedSpritePixelGrowth.GetValueOrDefault(e.Name, 1) > 1 ? $"{installedSpritePixelGrowth[e.Name]:0.##}× pixels installed" : installedSpriteChanges.Contains(e.Name) ? "Updated" : "Original")}")).ToArray();
             list.SelectedItem = list.Items.Cast<SpriteRow>().FirstOrDefault(r => r.Name == selected);
             if (list.SelectedItem == null && list.Items.Count > 0) list.SelectedIndex = 0;
         }
@@ -105,7 +106,7 @@ public partial class MainWindow
         enemySprites = data.Original;
         var original = data.Original.ToDictionary(e => e.Name);
         installedSpriteChanges = data.Installed.Where(e => !e.Png.AsSpan().SequenceEqual(original[e.Name].Png)).Select(e => e.Name).ToHashSet();
-        installedSpriteScales = data.Installed.ToDictionary(e => e.Name, e => EnemySprites.Scale(e.Width, e.Height, original[e.Name].Width, original[e.Name].Height));
+        installedSpritePixelGrowth = data.Installed.ToDictionary(e => e.Name, e => EnemySprites.PixelGrowth(e.Width, e.Height, original[e.Name].Width, original[e.Name].Height));
         if (config.EnemySpritesFolder != null) _ = ValidateEnemySprites();
     });
     Action<int, int> SpriteProgress(string operation)
@@ -123,7 +124,7 @@ public partial class MainWindow
             var service = SpriteService(); var progress = SpriteProgress("Extracting");
             config.EnemySpritesFolder = await Task.Run(() => service.ExtractAll(destination, progress)); spritePlan = null; SaveDraft();
             await CheckEnemySpriteEdits();
-            MessageBox.Show(this, $"Extracted {enemySprites.Count} sprites to:\n{destination}\n\nKeep filenames and proportions; use any size from original up to 10×. Then Validate Edited Folder.", "Enemy sprites extracted");
+            MessageBox.Show(this, $"Extracted {enemySprites.Count} sprites to:\n{destination}\n\nKeep filenames and proportions; aim around 10× original pixel count (about 3.16× dimensions). Then Validate Edited Folder.", "Enemy sprites extracted");
         });
     }
     void ChooseEnemySpriteFolder()
@@ -141,7 +142,7 @@ public partial class MainWindow
     }
     void UpdateSpriteScanUi()
     {
-        if (spriteScanLabel != null) { spriteScanLabel.Text = spriteScanStatus; spriteScanLabel.Foreground = Brush(spritePlan == null && !spriteScanning ? "#EACB89" : "#A6BAC5"); }
+        if (spriteScanLabel != null) { spriteScanLabel.Text = spriteScanStatus; spriteScanLabel.Foreground = Brush(!spriteScanning && (spritePlan == null || spritePlan.Warnings?.Count > 0) ? "#EACB89" : "#A6BAC5"); }
         if (spriteApplyButton != null) { spriteApplyButton.Content = spriteScanning ? "Checking Sprite Updates…" : spritePlan == null ? "Fix Images Before Applying" : $"Apply {spritePlan.Changes.Count} Sprite Updates"; spriteApplyButton.IsEnabled = !spriteScanning && spritePlan?.Changes.Count > 0; }
         if (spriteValidateButton != null) spriteValidateButton.IsEnabled = !spriteScanning && config.EnemySpritesFolder != null;
         if (spriteCancelButton != null) spriteCancelButton.Visibility = spriteScanning ? Visibility.Visible : Visibility.Collapsed;
@@ -166,7 +167,8 @@ public partial class MainWindow
             if (cancellation.IsCancellationRequested || game != config.GamePath || folder != config.EnemySpritesFolder) return false;
             spritePlan = report.Plan;
             spriteScanStatus = report.Plan == null ? $"Fix {report.Issues.Count} image issue(s) before applying. You can still browse and replace PNGs.\n" + string.Join("\n", report.Issues)
-                : $"{report.Plan.Changes.Count} pending updates · {report.Plan.HdSprites} HD sprites after apply. Edits are checked when you return to this app.";
+                : $"{report.Plan.Changes.Count} pending updates · {report.Plan.HdSprites} HD sprites · {report.Plan.TextureBytes / 1048576.0:0.0} / 256 MiB estimated library textures ({report.Plan.TextureBytes / (double)Math.Max(1, report.Plan.OriginalTextureBytes):0.##}× original pixels)."
+                    + (report.Plan.Warnings?.Count > 0 ? "\n" + string.Join("\n", report.Plan.Warnings) : "");
             return report.Plan != null;
         }
         catch (OperationCanceledException) { if (spriteScanCancellation == cancellation) spriteScanStatus = "Scan cancelled. Validate the folder when you're ready."; return false; }
@@ -180,7 +182,7 @@ public partial class MainWindow
     void ReplaceEnemySprite(SpriteEntry? sprite)
     {
         if (sprite == null || config.EnemySpritesFolder == null) return;
-        var dialog = new OpenFileDialog { Title = $"Choose a proportional PNG up to 10× for {sprite.Name} (base {sprite.Width} × {sprite.Height})", Filter = "PNG images|*.png" };
+        var dialog = new OpenFileDialog { Title = $"Choose a proportional PNG for {sprite.Name} (base {sprite.Width} × {sprite.Height}; aim around 10× pixels)", Filter = "PNG images|*.png" };
         if (dialog.ShowDialog(this) != true) return;
         var folder = config.EnemySpritesFolder;
         _ = Run("Preparing replacement sprite…", async () =>
@@ -206,7 +208,7 @@ public partial class MainWindow
         await Task.Run(() => service.Apply(plan, game.Idle, catalog => EnableHdRendering(game, catalog)));
         spritePlan = null; var updated = await Task.Run(service.InstalledSprites); var original = enemySprites.ToDictionary(e => e.Name);
         installedSpriteChanges = updated.Where(e => !e.Png.AsSpan().SequenceEqual(original[e.Name].Png)).Select(e => e.Name).ToHashSet();
-        installedSpriteScales = updated.ToDictionary(e => e.Name, e => EnemySprites.Scale(e.Width, e.Height, original[e.Name].Width, original[e.Name].Height));
+        installedSpritePixelGrowth = updated.ToDictionary(e => e.Name, e => EnemySprites.PixelGrowth(e.Width, e.Height, original[e.Name].Width, original[e.Name].Height));
         await RefreshGame();
         await CheckEnemySpriteEdits();
         MessageBox.Show(this, $"Updated {plan.Changes.Count} enemy sprites. Launch the game to see the changes.", "Sprite updates applied");
@@ -214,7 +216,7 @@ public partial class MainWindow
     async Task RestoreEnemySprites() => await Run("Restoring backed-up enemy sprites…", async () =>
     {
         var service = SpriteService(); var game = RequireEngine(); await Task.Run(() => service.Restore(game.Idle));
-        spritePlan = null; installedSpriteChanges.Clear(); installedSpriteScales.Clear();
+        spritePlan = null; installedSpriteChanges.Clear(); installedSpritePixelGrowth.Clear();
         if (config.EnemySpritesFolder != null) await CheckEnemySpriteEdits();
         MessageBox.Show(this, "The enemy sprite archive has been restored from its verified backup. Your edited PNGs remain in the editing folder.", "Sprites restored");
     });

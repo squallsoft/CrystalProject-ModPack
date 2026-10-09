@@ -11,7 +11,7 @@ public sealed record SpriteEntry(string Name, byte[] Png, int Width, int Height)
     public string Filename => Name + ".png";
 }
 public sealed record SpriteChange(string Name, string Filename, int Width, int Height, double Scale = 1);
-public sealed record SpritePlan(string ArchiveHash, string Workspace, IReadOnlyList<SpriteChange> Changes, byte[] Archive, byte[] SizeCatalog, int HdSprites);
+public sealed record SpritePlan(string ArchiveHash, string Workspace, IReadOnlyList<SpriteChange> Changes, byte[] Archive, byte[] SizeCatalog, int HdSprites, long TextureBytes = 0, long OriginalTextureBytes = 0, IReadOnlyList<string>? Warnings = null);
 public sealed record SpriteValidation(SpritePlan? Plan, IReadOnlyList<string> Issues);
 public sealed record SpriteExport(int SchemaVersion, string SourceArchiveHash, SpriteExportEntry[] Sprites);
 public sealed record SpriteExportEntry(string Filename, int Width, int Height, string Sha256);
@@ -22,6 +22,23 @@ public sealed class EnemySprites
 {
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     const int MaxArchiveBytes = 256 * 1024 * 1024;
+    public const int MaxTextureAxis = 4096, MaxTexturePixels = 4_194_304;
+    public const long MaxLibraryTextureBytes = 256L * 1024 * 1024, WarningLibraryTextureBytes = 128L * 1024 * 1024;
+    public static double PixelGrowth(int width, int height, int originalWidth, int originalHeight) => (long)width * height / (double)((long)originalWidth * originalHeight);
+    public static long ValidateTextureBudget(IEnumerable<(int Width, int Height)> sizes)
+    {
+        long bytes = 0;
+        foreach (var size in sizes) { ValidateDimensions(size.Width, size.Height); bytes = checked(bytes + (long)size.Width * size.Height * 4); }
+        if (bytes > MaxLibraryTextureBytes) throw new InvalidDataException($"Enemy library needs about {bytes / 1048576.0:0.0} MiB of RGBA texture memory; the budget is 256 MiB. Reduce image sizes, aiming around 10× original pixel count (about 3.16× dimensions).");
+        return bytes;
+    }
+    public static IReadOnlyList<string> TextureWarnings(long bytes) => bytes > WarningLibraryTextureBytes
+        ? [$"High texture-memory estimate: {bytes / 1048576.0:0.0} MiB. Test game loading and performance; aim around 10× original pixel count."] : [];
+    static void ValidateDimensions(int width, int height)
+    {
+        if (width <= 0 || height <= 0 || width > MaxTextureAxis || height > MaxTextureAxis || (long)width * height > MaxTexturePixels)
+            throw new InvalidDataException($"Image is {width} × {height}. Use at most 4096 pixels per axis and 4,194,304 pixels total (16 MiB RGBA). Resize and export again.");
+    }
     public string Game { get; }
     public string ArchivePath => Path.Combine(Game, "Content", "Textures", "Monster.dat");
     public string Store { get; }
@@ -64,13 +81,14 @@ public sealed class EnemySprites
             device.Length == 4 && (device.StartsWith("COM") || device.StartsWith("LPT")) && device[3] is >= '0' and <= '9')
             throw new InvalidDataException("Unsupported reserved sprite filename.");
     }
-    public static (int Width, int Height) ValidatePng(byte[] png)
+    public static (int Width, int Height) ValidatePng(byte[] png, bool enforceImportLimits = true)
     {
         if (png.Length < 33 || png.Length > 32 * 1024 * 1024 || !png.AsSpan(0, 8).SequenceEqual(new byte[] { 137,80,78,71,13,10,26,10 }))
             throw new InvalidDataException("Choose a valid PNG image; renaming another format does not convert it.");
         int width = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4));
         int height = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20, 4));
-        if (width <= 0 || height <= 0 || width > 8192 || height > 8192 || (long)width * height > 16_777_216)
+        if (enforceImportLimits) ValidateDimensions(width, height);
+        else if (width <= 0 || height <= 0 || width > 8192 || height > 8192 || (long)width * height > 16_777_216)
             throw new InvalidDataException($"Image is {width} × {height}. Use at most 8192 pixels per axis and 16,777,216 pixels total. Resize and export again.");
         int position = 8; bool data = false, end = false;
         while (position < png.Length)
@@ -119,7 +137,7 @@ public sealed class EnemySprites
             if (name.Length != length || !names.Add(name)) throw new InvalidDataException("Duplicate or truncated sprite name.");
             int bytes = reader.ReadInt32();
             if (bytes <= 0 || bytes > 32 * 1024 * 1024 || bytes > stream.Length - stream.Position) throw new InvalidDataException("Invalid sprite image bounds.");
-            byte[] png = reader.ReadBytes(bytes); var size = ValidatePng(png);
+            byte[] png = reader.ReadBytes(bytes); var size = ValidatePng(png, enforceImportLimits: false);
             sprites.Add(new(name, png, size.Width, size.Height));
         }
         if (stream.Position != stream.Length) throw new InvalidDataException("Unexpected trailing sprite archive data.");
@@ -127,15 +145,14 @@ public sealed class EnemySprites
     }
     public static double Scale(int width, int height, int originalWidth, int originalHeight)
     {
-        if (originalWidth > 0 && originalHeight > 0 && width >= originalWidth && height >= originalHeight
-            && width <= (long)originalWidth * 10 && height <= (long)originalHeight * 10)
+        if (originalWidth > 0 && originalHeight > 0 && width >= originalWidth && height >= originalHeight)
         {
             // A proportional resize can round each dimension by half a pixel.
             double lower = Math.Max(1, Math.Max((width - 0.5) / originalWidth, (height - 0.5) / originalHeight));
-            double upper = Math.Min(10, Math.Min((width + 0.5) / originalWidth, (height + 0.5) / originalHeight));
+            double upper = Math.Min((width + 0.5) / originalWidth, (height + 0.5) / originalHeight);
             if (lower <= upper) return Math.Clamp((width / (double)originalWidth + height / (double)originalHeight) / 2, lower, upper);
         }
-        throw new InvalidDataException($"Use proportional dimensions from {originalWidth} × {originalHeight} up to {originalWidth * 10} × {originalHeight * 10} (1×–10×). Fractional scales may round to whole pixels; keep the original proportions.");
+        throw new InvalidDataException($"Image is {width} × {height}; original canvas is {originalWidth} × {originalHeight}. Keep its proportions and use at least the original dimensions. Fractional scales may round to whole pixels.");
     }
     public static byte[] SizeCatalog(IReadOnlyList<SpriteEntry> originals) => Encoding.UTF8.GetBytes("CrystalProjectHDSprites:1\n" + string.Join("\n", originals.Select(e => $"Monster/{e.Name}|{e.Width}|{e.Height}")) + "\n");
     public byte[] OriginalSizeCatalog() => Locked(() => SizeCatalog(Parse(Baseline(Read(ArchivePath)))));
@@ -251,6 +268,10 @@ public sealed class EnemySprites
         var known = entries.ToDictionary(e => e.Filename, StringComparer.OrdinalIgnoreCase);
         var files = Directory.GetFiles(folder).Where(f => Path.GetExtension(f).Equals(".png", StringComparison.OrdinalIgnoreCase)).ToArray();
         var issues = new List<string>();
+        long projectedArchiveBytes = live.Length;
+        foreach (string file in files)
+            if (known.TryGetValue(Path.GetFileName(file), out var knownEntry)) projectedArchiveBytes += new FileInfo(file).Length - installed[knownEntry.Name].Png.Length;
+        if (projectedArchiveBytes > MaxArchiveBytes) return new SpriteValidation(null, ["The edited archive would exceed 256 MiB of PNG data. Reduce PNG file sizes before scanning."]);
         var replacements = new Dictionary<string, byte[]>(); var changes = new List<SpriteChange>();
         for (int i = 0; i < files.Length; i++)
         {
@@ -269,9 +290,19 @@ public sealed class EnemySprites
         }
         cancellation.ThrowIfCancellationRequested();
         if (issues.Count > 0) return new SpriteValidation(null, issues);
+        var changedSizes = changes.ToDictionary(c => c.Name);
+        var projectedSizes = installed.Values.Select(e => changedSizes.TryGetValue(e.Name, out var change) ? (e.Name, change.Width, change.Height) : (e.Name, e.Width, e.Height)).ToArray();
+        foreach (var size in projectedSizes)
+            try { ValidateDimensions(size.Width, size.Height); } catch (InvalidDataException error) { issues.Add(size.Name + ".png: " + error.Message); }
+        if (issues.Count > 0) return new SpriteValidation(null, issues);
+        long textureBytes;
+        try { textureBytes = ValidateTextureBudget(projectedSizes.Select(s => (s.Width, s.Height))); }
+        catch (InvalidDataException error) { return new SpriteValidation(null, [error.Message]); }
         byte[] updated = Rebuild(live, replacements, entries); var baseline = entries.ToDictionary(e => e.Name);
         int hd = Parse(updated).Count(e => Scale(e.Width, e.Height, baseline[e.Name].Width, baseline[e.Name].Height) > 1);
-        return new SpriteValidation(new SpritePlan(Hash(live), folder, changes, updated, SizeCatalog(entries), hd), []);
+        long originalBytes = entries.Sum(e => (long)e.Width * e.Height * 4);
+        var warnings = TextureWarnings(textureBytes).Concat(projectedSizes.Where(s => (long)s.Width * s.Height * 4 >= 8 * 1024 * 1024).Select(s => $"{s.Name}.png uses about {(long)s.Width * s.Height * 4 / 1048576.0:0.0} MiB of RGBA texture memory.")).ToArray();
+        return new SpriteValidation(new SpritePlan(Hash(live), folder, changes, updated, SizeCatalog(entries), hd, textureBytes, originalBytes, warnings), []);
     });
     public void Apply(SpritePlan plan, Action ensureGameClosed, Action<byte[]>? ensureHdRendering = null) => Locked(() =>
     {
@@ -280,6 +311,7 @@ public sealed class EnemySprites
         var original = Parse(state != null ? Read(BackupPath) : live); var updated = Parse(plan.Archive);
         if (original.Count != updated.Count || original.Zip(updated).Any(p => p.First.Name != p.Second.Name))
             throw new InvalidDataException("Updated archive does not match this installation.");
+        ValidateTextureBudget(updated.Select(e => (e.Width, e.Height)));
         var factors = original.Zip(updated).Select(p => Scale(p.Second.Width, p.Second.Height, p.First.Width, p.First.Height)).ToArray();
         bool hd = factors.Any(factor => factor > 1);
         if (hd)

@@ -81,6 +81,28 @@ Check(File.ReadAllBytes(live).SequenceEqual(source), "Reporting invalid PNGs lea
 using (var cancelled = new CancellationTokenSource()) { cancelled.Cancel(); Refused(() => service.ScanFolder(workspace, cancellation: cancelled.Token), "Sprite scan supports cancellation"); }
 File.WriteAllBytes(Path.Combine(workspace, "Bat.png"), changed); File.WriteAllBytes(Path.Combine(workspace, "Slime.png"), png); File.WriteAllBytes(Path.Combine(workspace, "敵.png"), png);
 Check(service.ScanFolder(workspace).Plan?.Changes.Count == 1, "Corrected PNGs can validate successfully after a failed scan");
+Check(EnemySprites.ValidateTextureBudget([(2048, 2048)]) == 16 * 1024 * 1024, "Per-image pixel boundary represents 16 MiB of RGBA texture memory");
+byte[] legacyLarge = Png(3200, 2400, 20);
+Check(EnemySprites.Parse(Archive(("Legacy", legacyLarge))).Single().Width == 3200, "Previously supported installed image remains inspectable under bounded legacy decoding");
+Refused(() => EnemySprites.ValidatePng(legacyLarge), "Legacy decoding does not bypass stricter new-image import limits");
+Refused(() => EnemySprites.ValidateTextureBudget([(4097, 1)]), "Texture-axis limit is enforced");
+Refused(() => EnemySprites.ValidateTextureBudget([(2049, 2048)]), "Per-image pixel limit is enforced independently of axis size");
+Check(EnemySprites.ValidateTextureBudget(Enumerable.Repeat((2048, 2048), 16)) == EnemySprites.MaxLibraryTextureBytes, "256 MiB library boundary is accepted");
+Refused(() => EnemySprites.ValidateTextureBudget(Enumerable.Repeat((2048, 2048), 17)), "Aggregate decoded-memory budget is enforced");
+Check(EnemySprites.TextureWarnings(EnemySprites.WarningLibraryTextureBytes).Count == 0 && EnemySprites.TextureWarnings(EnemySprites.WarningLibraryTextureBytes + 4).Count == 1, "Library-memory warning threshold stays separate from the hard limit");
+Check(Math.Abs(EnemySprites.PixelGrowth(332, 452, 105, 143) - 10) < 0.01, "Sentry target around 10× pixel count is calculated from area");
+var budgetEntries = Enumerable.Range(0, 65).Select(i => ($"Enemy{i}", Png(16, 16, 20))).ToArray();
+string budgetGame = Path.Combine(root, "budget-game"); Directory.CreateDirectory(Path.Combine(budgetGame, "Content", "Textures"));
+string budgetArchive = Path.Combine(budgetGame, "Content", "Textures", "Monster.dat"); byte[] budgetSource = Archive(budgetEntries); File.WriteAllBytes(budgetArchive, budgetSource);
+var budgetService = new EnemySprites(budgetGame, Path.Combine(root, "budget-data")); string budgetFolder = budgetService.ExtractAll(Path.Combine(root, "budget-editing"));
+byte[] budgetPng = Png(1024, 1024, 20);
+foreach (var entry in budgetEntries) File.WriteAllBytes(Path.Combine(budgetFolder, entry.Item1 + ".png"), budgetPng);
+var budgetReport = budgetService.ScanFolder(budgetFolder);
+Check(budgetReport.Plan == null && budgetReport.Issues.Single().Contains("256 MiB") && File.ReadAllBytes(budgetArchive).SequenceEqual(budgetSource), "Compressed small PNGs cannot bypass the library-memory budget or change installed sprites");
+var forgedPlan = new SpritePlan(EnemySprites.Hash(budgetSource), budgetFolder, [], Archive(budgetEntries.Select(e => (e.Item1, budgetPng)).ToArray()), [], 65);
+bool budgetRendererTouched = false;
+Refused(() => budgetService.Apply(forgedPlan, () => { }, _ => budgetRendererTouched = true), "Apply independently rechecks decoded-memory budget");
+Check(!budgetRendererTouched && File.ReadAllBytes(budgetArchive).SequenceEqual(budgetSource), "Budget refusal precedes renderer installation and archive changes");
 string manifestPath = Path.Combine(workspace, "sprites.json"); string manifest = File.ReadAllText(manifestPath);
 File.WriteAllText(manifestPath, manifest.Replace(EnemySprites.Hash(source), new string('0', 64)));
 Refused(() => service.ValidateFolder(workspace), "Workspace from different source archive refused"); File.WriteAllText(manifestPath, manifest);

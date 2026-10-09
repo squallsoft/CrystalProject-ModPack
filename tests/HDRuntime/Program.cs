@@ -51,9 +51,9 @@ class Program
         Check(Runtime.OriginWidth(odd) / 2 == 20 && Runtime.OriginHeight(odd) / 2 == 12, "Odd-size HD atlas centers preserve original integer rounding");
         object rounded = Texture(28, 18); Runtime.Register("Monster/Odd", rounded, monster);
         Check(Runtime.LogicalWidth(rounded) == 11 && Runtime.LogicalHeight(rounded) == 7 && Runtime.OriginWidth(rounded) / 2 == 13 && Runtime.OriginHeight(rounded) / 2 == 8, "Rounded fractional dimensions preserve logical size and pixel-aligned atlas centers");
-        object stretched = Texture(100, 180), tooLarge = Texture(101, 200);
-        Runtime.Register("Monster/Test", stretched, monster); Runtime.Register("Monster/Test", tooLarge, monster);
-        Check(Runtime.LogicalWidth(stretched) == 100 && Runtime.LogicalWidth(tooLarge) == 101, "Runtime does not register stretched or over-10× textures");
+        object stretched = Texture(100, 180), larger = Texture(120, 240);
+        Runtime.Register("Monster/Test", stretched, monster); Runtime.Register("Monster/Test", larger, monster);
+        Check(Runtime.LogicalWidth(stretched) == 100 && Runtime.LogicalWidth(larger) == 10 && Runtime.LogicalHeight(larger) == 20, "Renderer registers proportional images above 10× dimensions without registering stretched images");
         Console.WriteLine(count + " HD runtime checks passed.");
     }
 }

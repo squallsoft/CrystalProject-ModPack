@@ -187,7 +187,8 @@ internal sealed class Engine
             || hash == "2122432d4c033f270fc7de8930742cab77d77fea86f465ae849417a8ef914aba"))
         || (name == "CrystalProjectHDSprites.dll" && (hash == "e9243bb7e7ffdd36aa3425e3c54cefe1a8c7afcfab73ad2fa6027db247c3a22a"
             || hash == "4020f3d81093e76581f73b36a55a5d46345065880fcba6dfbb6b0812e70afdf7"
-            || hash == "cd08f2eaca0eaf4801ebb356f534b6d30e9bf5c1170d44cb9f43071bc494240a"));
+            || hash == "cd08f2eaca0eaf4801ebb356f534b6d30e9bf5c1170d44cb9f43071bc494240a"
+            || hash == "e74ef55aeb84a1ac7443e421707daa73a199933372f3f971acd8323069133a48"));
     void ValidateHdSelection(Selection selection, Dictionary<string, string>? assets, Dictionary<string, string> hashes, bool currentHd)
     {
         SafeTarget(SpriteSizesName); string installed = Path.Combine(Game, SpriteSizesName);
