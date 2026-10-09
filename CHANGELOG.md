@@ -1,5 +1,11 @@
 # Changelog
 
+## Flexible sprite scales — 2026-10-09
+
+- Accept any proportional enlargement from 1× through 10×, including fractional factors and whole-pixel rounding.
+- Use fractional texture density for renderer registration, atlas centers and portrait crop edges; retain the original logical battle size.
+- Preserve nonblocking validation and existing image limits; reject stretched images, downscales and dimensions beyond 10×.
+
 ## Nonblocking sprite validation — 2026-10-09
 
 - Scan edited folders in the background with cancellation; keep navigation, searching and replacement controls available.

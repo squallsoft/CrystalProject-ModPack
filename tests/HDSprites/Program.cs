@@ -40,8 +40,11 @@ var entries = service.Catalog(); string workspace = service.ExtractAll(Path.Comb
 File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), Png(entries[0].Width * 2, entries[0].Height * 2));
 File.WriteAllBytes(Path.Combine(workspace, entries[1].Filename), Png(entries[1].Width * 4, entries[1].Height * 4));
 var plan = service.ValidateFolder(workspace);
-Check(plan.Changes.Count == 2 && plan.HdSprites == 2 && plan.Changes.Select(c => c.Scale).Order().SequenceEqual(new[] { 2,4 }), "Mixed original, 2× and 4× workspace validates");
-Refused(() => EnemySprites.Scale(30, 60, 10, 20), "Unsupported 3× dimensions refused");
+Check(plan.Changes.Count == 2 && plan.HdSprites == 2 && plan.Changes.Select(c => c.Scale).Order().SequenceEqual(new[] { 2d,4d }), "Mixed original, 2× and 4× workspace validates");
+Check(EnemySprites.Scale(30, 60, 10, 20) == 3 && EnemySprites.Scale(35, 70, 10, 20) == 3.5, "Integer and fractional enlargement factors accepted");
+Check(Math.Abs(EnemySprites.Scale(368, 501, 105, 143) - 3.5) < 0.01, "Fractional Sentry resize tolerates whole-pixel rounding");
+Refused(() => EnemySprites.Scale(101, 200, 10, 20), "Dimensions exceeding 10× are refused");
+Refused(() => EnemySprites.Scale(5, 10, 10, 20), "Images smaller than the original are refused");
 Refused(() => EnemySprites.Scale(20, 80, 10, 20), "Nonuniform enlargement refused");
 Refused(() => service.Apply(plan, engine.Idle), "HD images cannot deploy without a rendering-patch callback");
 Check(File.ReadAllBytes(live).SequenceEqual(original), "Missing renderer refusal leaves original archive untouched");
@@ -108,6 +111,10 @@ File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), Png(entries[0].
 var tenfold = service.ValidateFolder(workspace); service.Apply(tenfold, engine.Idle, Install);
 Check(tenfold.Changes.Count == 1 && tenfold.Changes[0].Scale == 10 && service.InstalledSprites()[0].Height == entries[0].Height * 10, "10× sprites validate and deploy alongside original and 4× images");
 Refused(() => EnemySprites.Scale(100, 80, 10, 20), "Nonuniform 10× enlargement refused");
+int fractionalWidth = (int)Math.Round(entries[0].Width * 3.5, MidpointRounding.AwayFromZero), fractionalHeight = (int)Math.Round(entries[0].Height * 3.5, MidpointRounding.AwayFromZero);
+File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), Png(fractionalWidth, fractionalHeight));
+var fractional = service.ValidateFolder(workspace); service.Apply(fractional, engine.Idle, Install);
+Check(fractional.Changes.Count == 1 && Math.Abs(fractional.Changes[0].Scale - 3.5) < 0.01 && service.InstalledSprites()[0].Width == fractionalWidth, "Fractional PNG validates and deploys with other HD sprites");
 File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), entries[0].Png); File.WriteAllBytes(Path.Combine(workspace, entries[1].Filename), entries[1].Png);
 var normal = service.ValidateFolder(workspace); service.Apply(normal, engine.Idle);
 Check(normal.HdSprites == 0 && File.ReadAllBytes(live).SequenceEqual(original), "HD sprites can return to original resolution without changing filenames");
@@ -118,7 +125,7 @@ service.Restore(engine.Idle); Check(File.ReadAllBytes(live).SequenceEqual(origin
 engine.Apply(new(false, true)); Check(engine.Inspect().Mods == new Selection(false, true) && !File.Exists(Path.Combine(game, "CrystalProjectHDSprites.dll")) && !File.Exists(Path.Combine(game, Engine.SpriteSizesName)), "Renderer removal clears owned helper and metadata while retaining Home Points");
 engine.Apply(new(false, false)); Check(Patches.Hash(engine.Exe) == Patches.Original, "Restoring vanilla returns exact executable after HD removal");
 Check(engine.Record()!.HelperHashes!.Count == 0, "Removed helpers clear their ownership records");
-Check(File.ReadAllBytes(args[1]).SequenceEqual(original), "Live Steam sprite archive remains unchanged");
+Check(File.ReadAllBytes(args[1]).SequenceEqual(original), "Source sprite archive remains unchanged");
 // A separate isolated fixture is used to execute patched methods in .NET Framework.
 string runtimeGame = Path.Combine(root, "runtime-game"); Directory.CreateDirectory(runtimeGame);
 File.Copy(Path.Combine(root, "build-False-False-True.exe"), Path.Combine(runtimeGame, "Crystal Project.exe")); File.WriteAllBytes(Path.Combine(runtimeGame, "CrystalProjectHDSprites.dll"), Patches.Resource("CrystalProjectHDSprites.dll"));

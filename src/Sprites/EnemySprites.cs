@@ -10,7 +10,7 @@ public sealed record SpriteEntry(string Name, byte[] Png, int Width, int Height)
 {
     public string Filename => Name + ".png";
 }
-public sealed record SpriteChange(string Name, string Filename, int Width, int Height, int Scale = 1);
+public sealed record SpriteChange(string Name, string Filename, int Width, int Height, double Scale = 1);
 public sealed record SpritePlan(string ArchiveHash, string Workspace, IReadOnlyList<SpriteChange> Changes, byte[] Archive, byte[] SizeCatalog, int HdSprites);
 public sealed record SpriteValidation(SpritePlan? Plan, IReadOnlyList<string> Issues);
 public sealed record SpriteExport(int SchemaVersion, string SourceArchiveHash, SpriteExportEntry[] Sprites);
@@ -125,10 +125,17 @@ public sealed class EnemySprites
         if (stream.Position != stream.Length) throw new InvalidDataException("Unexpected trailing sprite archive data.");
         return sprites;
     }
-    public static int Scale(int width, int height, int originalWidth, int originalHeight)
+    public static double Scale(int width, int height, int originalWidth, int originalHeight)
     {
-        foreach (int factor in new[] { 1, 2, 4, 10 }) if (width == originalWidth * factor && height == originalHeight * factor) return factor;
-        throw new InvalidDataException($"Use a {originalWidth} × {originalHeight}, {originalWidth * 2} × {originalHeight * 2}, {originalWidth * 4} × {originalHeight * 4}, or {originalWidth * 10} × {originalHeight * 10} PNG (1×, 2×, 4×, or 10×).");
+        if (originalWidth > 0 && originalHeight > 0 && width >= originalWidth && height >= originalHeight
+            && width <= (long)originalWidth * 10 && height <= (long)originalHeight * 10)
+        {
+            // A proportional resize can round each dimension by half a pixel.
+            double lower = Math.Max(1, Math.Max((width - 0.5) / originalWidth, (height - 0.5) / originalHeight));
+            double upper = Math.Min(10, Math.Min((width + 0.5) / originalWidth, (height + 0.5) / originalHeight));
+            if (lower <= upper) return Math.Clamp((width / (double)originalWidth + height / (double)originalHeight) / 2, lower, upper);
+        }
+        throw new InvalidDataException($"Use proportional dimensions from {originalWidth} × {originalHeight} up to {originalWidth * 10} × {originalHeight * 10} (1×–10×). Fractional scales may round to whole pixels; keep the original proportions.");
     }
     public static byte[] SizeCatalog(IReadOnlyList<SpriteEntry> originals) => Encoding.UTF8.GetBytes("CrystalProjectHDSprites:1\n" + string.Join("\n", originals.Select(e => $"Monster/{e.Name}|{e.Width}|{e.Height}")) + "\n");
     public byte[] OriginalSizeCatalog() => Locked(() => SizeCatalog(Parse(Baseline(Read(ArchivePath)))));
@@ -172,7 +179,18 @@ public sealed class EnemySprites
         try
         {
             using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { file.Write(bytes); file.Flush(true); }
-            if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
+            if (File.Exists(path))
+            {
+                string before = Hash(Read(path));
+                for (int attempt = 0; ; attempt++)
+                {
+                    try { File.Replace(temporary, path, null); break; }
+                    catch (IOException error) when (attempt < 4 && (error.HResult & 0xffff) is 32 or 33 or 1175
+                        && File.Exists(temporary) && File.Exists(path) && Hash(Read(path)) == before)
+                    { Thread.Sleep(150); }
+                }
+            }
+            else File.Move(temporary, path);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
@@ -242,7 +260,7 @@ public sealed class EnemySprites
                 if (!known.TryGetValue(Path.GetFileName(files[i]), out var entry)) throw new InvalidDataException("Use an exact extracted filename, or move this extra PNG into a subfolder.");
                 if (new FileInfo(files[i]).Length > 32 * 1024 * 1024) throw new InvalidDataException("Image exceeds 32 MiB. Export a smaller PNG.");
                 byte[] png = Read(files[i]); var size = ValidatePng(png);
-                int scale = Scale(size.Width, size.Height, entry.Width, entry.Height);
+                double scale = Scale(size.Width, size.Height, entry.Width, entry.Height);
                 if (!png.AsSpan().SequenceEqual(installed[entry.Name].Png)) { replacements[entry.Name] = png; changes.Add(new(entry.Name, entry.Filename, size.Width, size.Height, scale)); }
             }
             catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or FormatException)

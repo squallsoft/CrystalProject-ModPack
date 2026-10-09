@@ -2,6 +2,7 @@ param(
     [string]$GameDirectory = 'C:\Program Files (x86)\Steam\steamapps\common\Crystal Project',
     [string]$PristineExecutable,
     [string]$PreviousRuntimeDirectory,
+    [string]$SpriteArchive,
     [string]$Sdk
 )
 $ErrorActionPreference = 'Stop'
@@ -16,7 +17,10 @@ Push-Location $repo
 try {
     & $Sdk build src\CrystalProjectModManager -c Release
     if ($LASTEXITCODE) { throw 'Manager build failed' }
-    $testArguments = @($repo, (Join-Path $GameDirectory 'Content\Textures\Monster.dat'))
+    $liveArchive = Join-Path $GameDirectory 'Content\Textures\Monster.dat'
+    $liveArchiveHash = (Get-FileHash -LiteralPath $liveArchive).Hash
+    if (!$SpriteArchive) { $SpriteArchive = $liveArchive }
+    $testArguments = @($repo, $SpriteArchive)
     if ($PreviousRuntimeDirectory) { $testArguments += $PreviousRuntimeDirectory }
     & $Sdk run --project tests\HDSprites -c Release -- @testArguments
     if ($LASTEXITCODE) { throw 'HD integration tests failed' }
@@ -25,4 +29,5 @@ try {
     $runtimeFixture = Get-Content -LiteralPath artifacts\hd-runtime-location.txt
     & tests\HDRuntime\bin\Release\net462\HDRuntimeTests.exe $runtimeFixture $GameDirectory | Tee-Object -FilePath artifacts\hd-runtime-tests.txt
     if ($LASTEXITCODE) { throw 'HD runtime tests failed' }
+    if ((Get-FileHash -LiteralPath $liveArchive).Hash -ne $liveArchiveHash) { throw 'Live game sprite archive changed during testing.' }
 } finally { Pop-Location }

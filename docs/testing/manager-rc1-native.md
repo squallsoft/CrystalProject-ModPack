@@ -51,6 +51,8 @@ For every row test no replacement, one track, and three tracks. Listen through a
 
 ## Enemy sprites and HD rendering
 
+When HD images are already installed, pass a verified original `Monster.dat` backup with `tools/test-hd-sprites.ps1 -SpriteArchive '<original archive>'`. This keeps scale fixtures relative to original canvases and checks that the live archive hash remains unchanged.
+
 The isolated `--render <folder> --verify-sprite-scan` check copies the source archive into a private fixture, introduces an oversized PNG, and verifies available navigation, inline file-specific errors, disabled Apply, cancellation, and successful validation after correction. The source game and user artwork remain unchanged.
 
 To test upgrades from an older manager, run `tools/test-hd-sprites.ps1 -PreviousRuntimeDirectory '<game folder containing the previous music and Home Points DLLs>'`. The test copies those first-party helpers into its private fixture, simulates a legacy manifest, installs HD while retaining both features, and checks that externally modified helpers remain protected. It does not write to the source game folder.

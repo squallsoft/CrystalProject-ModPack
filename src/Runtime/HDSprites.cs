@@ -46,7 +46,9 @@ namespace CrystalProjectHDSprites
                 if (Catalog(game).TryGetValue(key, out size))
                 {
                     int width = Actual(texture, "Width"), height = Actual(texture, "Height");
-                    if (width == size.Width && height == size.Height || width == size.Width * 2 && height == size.Height * 2 || width == size.Width * 4 && height == size.Height * 4 || width == size.Width * 10 && height == size.Height * 10)
+                    double lower = Math.Max(1, Math.Max((width - 0.5) / size.Width, (height - 0.5) / size.Height));
+                    double upper = Math.Min(10, Math.Min((width + 0.5) / size.Width, (height + 0.5) / size.Height));
+                    if (width >= size.Width && height >= size.Height && width <= size.Width * 10 && height <= size.Height * 10 && lower <= upper)
                         Sizes.Add(texture, size);
                 }
                 return texture;
@@ -56,17 +58,19 @@ namespace CrystalProjectHDSprites
         public static int LogicalHeight(object texture) { lock (Gate) { Size size; return Sizes.TryGetValue(texture, out size) ? size.Height : Actual(texture, "Height"); } }
         public static float RenderScale(float scale, object texture) { return scale * LogicalWidth(texture) / Actual(texture, "Width"); }
         // Preserve the game's integer-rounded center for odd-sized original canvases.
-        public static int OriginWidth(object texture) { int width = LogicalWidth(texture); return (width / 2) * 2 * (Actual(texture, "Width") / width); }
-        public static int OriginHeight(object texture) { int height = LogicalHeight(texture); return (height / 2) * 2 * (Actual(texture, "Height") / height); }
+        public static int OriginWidth(object texture) { int width = LogicalWidth(texture); return 2 * Pixel((width / 2) * (Actual(texture, "Width") / (double)width)); }
+        public static int OriginHeight(object texture) { int height = LogicalHeight(texture); return 2 * Pixel((height / 2) * (Actual(texture, "Height") / (double)height)); }
+        static int Pixel(double value) { return checked((int)Math.Round(value, MidpointRounding.AwayFromZero)); }
         public static object ScaleRegion(object region, object texture)
         {
-            int factor = Actual(texture, "Width") / LogicalWidth(texture);
-            if (factor == 1) return region;
-            foreach (string name in new[] { "X", "Y", "Width", "Height" })
-            {
-                var field = region.GetType().GetField(name, BindingFlags.Public | BindingFlags.Instance);
-                field.SetValue(region, checked((int)field.GetValue(region) * factor));
-            }
+            double sx = Actual(texture, "Width") / (double)LogicalWidth(texture), sy = Actual(texture, "Height") / (double)LogicalHeight(texture);
+            if (sx == 1 && sy == 1) return region;
+            var type = region.GetType(); FieldInfo x = type.GetField("X"), y = type.GetField("Y"), w = type.GetField("Width"), h = type.GetField("Height");
+            int left = (int)x.GetValue(region), top = (int)y.GetValue(region);
+            int right = left + (int)w.GetValue(region), bottom = top + (int)h.GetValue(region);
+            int scaledLeft = Pixel(left * sx), scaledTop = Pixel(top * sy);
+            x.SetValue(region, scaledLeft); y.SetValue(region, scaledTop);
+            w.SetValue(region, Pixel(right * sx) - scaledLeft); h.SetValue(region, Pixel(bottom * sy) - scaledTop);
             return region;
         }
     }

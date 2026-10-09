@@ -12,7 +12,7 @@ public partial class MainWindow
 {
     IReadOnlyList<SpriteEntry> enemySprites = [];
     HashSet<string> installedSpriteChanges = [];
-    Dictionary<string, int> installedSpriteScales = [];
+    Dictionary<string, double> installedSpriteScales = [];
     SpritePlan? spritePlan;
     CancellationTokenSource? spriteScanCancellation;
     readonly SemaphoreSlim spriteScanGate = new(1, 1);
@@ -45,7 +45,7 @@ public partial class MainWindow
         var hd = Button(installed?.HdSprites == true ? "HD Support Installed" : "Install HD Support", () => _ = InstallHdSprites()); hd.IsEnabled = loaded && installed != null && !installed.HdSprites;
         var removeHd = Button("Remove HD Support", () => _ = RemoveHdSprites()); removeHd.IsEnabled = installed?.HdSprites == true;
         var summary = Card(Stack(Text(loaded ? $"{enemySprites.Count} enemy sprites · {installedSpriteChanges.Count} updated" : "Read the enemy sprite library", 22),
-            Text("Use original, 2×, 4×, or 10× PNGs. Keep filenames, proportions, and transparency. HD rendering preserves the original in-game size.", 13, "#A6BAC5"),
+            Text("Use proportional PNGs from original size up to 10×, including fractional scales. Keep filenames, proportions, and transparency. HD rendering preserves the original in-game size.", 13, "#A6BAC5"),
             Actions(extract, Button("Choose Edited Folder", ChooseEnemySpriteFolder), validate, cancel, apply),
             Actions(Button("Reload Sprites", () => _ = LoadEnemySprites()), Button("Open Editing Folder", () => Open(config.EnemySpritesFolder)), restore, hd, removeHd),
             Text(config.EnemySpritesFolder ?? "No editing folder selected", 12, "#65D6C0"),
@@ -75,9 +75,9 @@ public partial class MainWindow
                 if (edited) { EnemySprites.SafePath(path!); if (new FileInfo(path!).Length > 32 * 1024 * 1024) throw new IOException("Image exceeds 32 MiB. Export a smaller PNG."); png = File.ReadAllBytes(path!); EnemySprites.ValidatePng(png); }
                 using var stream = new MemoryStream(png);
                 var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze(); image.Source = bitmap;
-                int factor = EnemySprites.Scale(bitmap.PixelWidth, bitmap.PixelHeight, row.Sprite.Width, row.Sprite.Height);
+                double factor = EnemySprites.Scale(bitmap.PixelWidth, bitmap.PixelHeight, row.Sprite.Width, row.Sprite.Height);
                 RenderOptions.SetBitmapScalingMode(image, factor > 1 ? BitmapScalingMode.HighQuality : BitmapScalingMode.NearestNeighbor);
-                detail.Text = $"{bitmap.PixelWidth} × {bitmap.PixelHeight} · {factor}×{(factor > 1 ? " HD" : " original size")} · {(edited ? "Editing folder" : "Original")}";
+                detail.Text = $"{bitmap.PixelWidth} × {bitmap.PixelHeight} · {factor:0.###}×{(factor > 1 ? " HD" : " original size")} · {(edited ? "Editing folder" : "Original")}";
                 replace.IsEnabled = config.EnemySpritesFolder != null;
             }
             catch (Exception error) { image.Source = null; detail.Text = "Preview unavailable: " + error.Message; replace.IsEnabled = config.EnemySpritesFolder != null; }
@@ -86,7 +86,7 @@ public partial class MainWindow
         {
             string? selected = selectedSpriteName;
             list.ItemsSource = (loaded ? enemySprites : []).Where(e => e.Name.Contains(spriteSearch, StringComparison.OrdinalIgnoreCase)).OrderBy(e => e.Name)
-                .Select(e => new SpriteRow(e, $"{e.Width} × {e.Height} base · {(spritePlan?.Changes.FirstOrDefault(c => c.Name == e.Name) is SpriteChange change ? $"Pending {change.Scale}×" : installedSpriteScales.GetValueOrDefault(e.Name, 1) > 1 ? $"{installedSpriteScales[e.Name]}× HD installed" : installedSpriteChanges.Contains(e.Name) ? "Updated" : "Original")}")).ToArray();
+                .Select(e => new SpriteRow(e, $"{e.Width} × {e.Height} base · {(spritePlan?.Changes.FirstOrDefault(c => c.Name == e.Name) is SpriteChange change ? $"Pending {change.Scale:0.###}×" : installedSpriteScales.GetValueOrDefault(e.Name, 1) > 1 ? $"{installedSpriteScales[e.Name]:0.###}× HD installed" : installedSpriteChanges.Contains(e.Name) ? "Updated" : "Original")}")).ToArray();
             list.SelectedItem = list.Items.Cast<SpriteRow>().FirstOrDefault(r => r.Name == selected);
             if (list.SelectedItem == null && list.Items.Count > 0) list.SelectedIndex = 0;
         }
@@ -123,7 +123,7 @@ public partial class MainWindow
             var service = SpriteService(); var progress = SpriteProgress("Extracting");
             config.EnemySpritesFolder = await Task.Run(() => service.ExtractAll(destination, progress)); spritePlan = null; SaveDraft();
             await CheckEnemySpriteEdits();
-            MessageBox.Show(this, $"Extracted {enemySprites.Count} sprites to:\n{destination}\n\nKeep filenames and use original, 2×, 4×, or 10× dimensions. Then Validate Edited Folder.", "Enemy sprites extracted");
+            MessageBox.Show(this, $"Extracted {enemySprites.Count} sprites to:\n{destination}\n\nKeep filenames and proportions; use any size from original up to 10×. Then Validate Edited Folder.", "Enemy sprites extracted");
         });
     }
     void ChooseEnemySpriteFolder()
@@ -180,7 +180,7 @@ public partial class MainWindow
     void ReplaceEnemySprite(SpriteEntry? sprite)
     {
         if (sprite == null || config.EnemySpritesFolder == null) return;
-        var dialog = new OpenFileDialog { Title = $"Choose a 1×, 2×, 4×, or 10× PNG for {sprite.Name} (base {sprite.Width} × {sprite.Height})", Filter = "PNG images|*.png" };
+        var dialog = new OpenFileDialog { Title = $"Choose a proportional PNG up to 10× for {sprite.Name} (base {sprite.Width} × {sprite.Height})", Filter = "PNG images|*.png" };
         if (dialog.ShowDialog(this) != true) return;
         var folder = config.EnemySpritesFolder;
         _ = Run("Preparing replacement sprite…", async () =>
