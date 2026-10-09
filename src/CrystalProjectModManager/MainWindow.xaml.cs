@@ -25,8 +25,9 @@ public partial class MainWindow : Window
     MusicCue? currentCue;
     ListBox? cueList, trackList;
     TextBox? search;
-    ComboBox? category;
-    CheckBox? replacedOnly;
+    ComboBox? category, replacementFilter, cueSort;
+    TextBlock? cueCount;
+    string musicSearch = "", musicCategory = "All categories", musicFilter = "All songs", musicSort = "Name A–Z";
     bool busy, changingSeek, configLoaded;
     TrackRow[] previewPool = [];
     int previewIndex;
@@ -42,7 +43,7 @@ public partial class MainWindow : Window
         library = new(renderDirectory == null ? null : Path.Combine(renderDirectory, "qa-data"));
         foreach (string label in new[] { "Home", "Music", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {
-            var button = Button(label, () => ShowPage(label)); button.HorizontalContentAlignment = HorizontalAlignment.Left; button.Padding = new(12, 11, 12, 11); button.FontSize = 13; button.Tag = label; Navigation.Children.Add(button);
+            var button = Button(label, () => ShowPage(label)); button.HorizontalContentAlignment = HorizontalAlignment.Left; button.Padding = new(12, 9, 12, 9); button.Margin = new(0, 0, 10, 6); button.FontSize = 13; button.Tag = label; Navigation.Children.Add(button);
         }
         PlayPause.Click += (_, _) => PreviewAction(() => { if (player.State == PlaybackState.Playing) player.Pause(); else if (player.FilePath != null) player.Play(); else PlaySelected(); });
         Stop.Click += (_, _) => PreviewAction(player.Stop);
@@ -54,7 +55,10 @@ public partial class MainWindow : Window
         {
             changingSeek = true; Seek.Maximum = Math.Max(1, player.Duration.TotalSeconds); if (!Seek.IsMouseCaptureWithin) Seek.Value = player.Position.TotalSeconds; changingSeek = false;
             if (player.FilePath != null) PlaybackTime.Text = $"{player.Position:mm\\:ss} / {player.Duration:mm\\:ss}";
-            PlayPause.Content = player.State == PlaybackState.Playing ? "Pause" : "Play";
+            bool playing = player.State == PlaybackState.Playing;
+            PlayPause.Content = playing ? "\uE769" : "\uE768";
+            PlayPause.ToolTip = playing ? "Pause" : "Play";
+            System.Windows.Automation.AutomationProperties.SetName(PlayPause, playing ? "Pause" : "Play");
             bool available = player.FilePath != null || trackList?.SelectedItem != null; PlayPause.IsEnabled = available; Stop.IsEnabled = player.FilePath != null; Seek.IsEnabled = player.FilePath != null;
             Previous.IsEnabled = Next.IsEnabled = !previewOriginal && (trackList?.Items.Count > 1 || previewPool.Length > 1);
         };
@@ -97,7 +101,7 @@ public partial class MainWindow : Window
         foreach (Button b in Navigation.Children) b.Background = Brush((string)b.Tag == name ? "#28514F" : "#142430");
         PageSubtitle.Text = name switch { "Music" => "Make the soundtrack your own. Single tracks or random pools, for every cue.", "Home" => "Your game, your soundtrack, your destinations.", "Home Points" => "More places to return to, with the game's Enhanced Home Point option.", "Backups & Repair" => "Verified originals and recovery, kept outside your Steam installation.", _ => "Crystal Project Mod Manager · Development preview" };
         UIElement content = name switch { "Home" => HomePage(), "Music" => MusicPage(), "Home Points" => HomePointPage(), "Installation / Game" => GamePage(), "Backups & Repair" => BackupPage(), "Settings" => SettingsPage(), _ => AboutPage() };
-        PageContent.Content = name == "Music" && ActualHeight >= 700 ? content : new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        PageContent.Content = name == "Music" ? content : new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Status.Text = "Changes are saved as a draft. Apply Changes updates the game.";
     }
     UIElement HomePage()
@@ -123,14 +127,22 @@ public partial class MainWindow : Window
     sealed record TrackRow(string Id, string Name, string Detail);
     UIElement MusicPage()
     {
-        var grid = new Grid { Height = ActualHeight < 700 ? 530 : double.NaN }; grid.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); grid.ColumnDefinitions.Add(new() { Width = new(1.1, GridUnitType.Star) });
+        var grid = new Grid(); grid.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); grid.ColumnDefinitions.Add(new() { Width = new(1.1, GridUnitType.Star) });
         var left = new Grid { Margin = new(0, 0, 18, 0) }; left.RowDefinitions.Add(new() { Height = GridLength.Auto }); left.RowDefinitions.Add(new() { Height = GridLength.Auto }); left.RowDefinitions.Add(new());
-        search = new() { Text = "", ToolTip = "Search cue names, areas, original titles, or identifiers", Margin = new(0, 0, 0, 10) }; search.TextChanged += (_, _) => FilterCues();
-        category = new() { ItemsSource = new[] { "All", "Areas", "Battle", "Boss", "Victory", "Events", "Other", "Ambience" }, SelectedIndex = 0, MinWidth = 130 }; category.SelectionChanged += (_, _) => FilterCues();
-        replacedOnly = new() { Content = "Replaced only", FontSize = 13, Margin = new(4, 8, 0, 8) }; replacedOnly.Checked += (_, _) => FilterCues(); replacedOnly.Unchecked += (_, _) => FilterCues();
-        var filters = Actions(category, replacedOnly); Grid.SetRow(filters, 1);
+        search = new() { Text = musicSearch, ToolTip = "Search cue names, areas, original titles, or identifiers", Margin = new(0, 0, 0, 10) }; search.TextChanged += (_, _) => { musicSearch = search.Text; FilterCues(); };
+        category = new() { ItemsSource = new[] { "All categories", "Areas", "Battle", "Boss", "Victory", "Events", "Other", "Ambience" }, SelectedItem = musicCategory, MinWidth = 130, ToolTip = "Filter by category" }; category.SelectionChanged += (_, _) => { musicCategory = category.SelectedItem.ToString()!; FilterCues(); };
+        replacementFilter = new() { ItemsSource = new[] { "All songs", "Replaced", "Not replaced" }, SelectedItem = musicFilter, MinWidth = 135, ToolTip = "Filter by replacement status" }; replacementFilter.SelectionChanged += (_, _) => { musicFilter = replacementFilter.SelectedItem.ToString()!; FilterCues(); };
+        cueSort = new() { ItemsSource = new[] { "Name A–Z", "Replaced first", "Not replaced first" }, SelectedItem = musicSort, MinWidth = 150, ToolTip = "Sort songs" }; cueSort.SelectionChanged += (_, _) => { musicSort = cueSort.SelectedItem.ToString()!; FilterCues(); };
+        cueCount = Text("", 12, "#A6BAC5");
+        var filterRow = new Grid(); filterRow.ColumnDefinitions.Add(new()); filterRow.ColumnDefinitions.Add(new());
+        category.MinWidth = replacementFilter.MinWidth = 0;
+        replacementFilter.Margin = new(0, 0, 0, 8); Grid.SetColumn(replacementFilter, 1);
+        filterRow.Children.Add(category); filterRow.Children.Add(replacementFilter);
+        var filters = Stack(filterRow, Actions(cueSort), cueCount); Grid.SetRow(filters, 1);
         cueList = new() { ItemTemplate = CueTemplate() }; cueList.SelectionChanged += (_, _) => { currentCue = (cueList.SelectedItem as CueRow)?.Cue; UpdatePoolEditor(grid); }; Grid.SetRow(cueList, 2);
-        left.Children.Add(search); left.Children.Add(filters); left.Children.Add(cueList); grid.Children.Add(left);
+        System.Windows.Automation.AutomationProperties.SetName(search, "Search soundtrack");
+        var searchPanel = Stack(Text("Search soundtrack", 12, "#A6BAC5"), search);
+        left.Children.Add(searchPanel); left.Children.Add(filters); left.Children.Add(cueList); grid.Children.Add(left);
         FilterCues();
         if (cueList.Items.Count > 0) cueList.SelectedItem = cueList.Items.Cast<CueRow>().FirstOrDefault(x => x.Cue.Id == currentCue?.Id) ?? cueList.Items[0];
         if (cueList.SelectedItem != null) cueList.ScrollIntoView(cueList.SelectedItem);
@@ -147,8 +159,15 @@ public partial class MainWindow : Window
     {
         if (cueList == null) return;
         var selected = currentCue?.Id;
-        cueList.ItemsSource = MusicLibrary.Cues.Where(c => (category?.SelectedItem?.ToString() is null or "All" || c.Category == category.SelectedItem.ToString()) && (replacedOnly?.IsChecked != true || Pool(c).Tracks.Count > 0) && (c.DisplayName + " " + c.GameCue + " " + c.OriginalTitle + " " + c.Context).Contains(search?.Text ?? "", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(c => c.DisplayName).Select(c => new CueRow(c, Pool(c).Tracks.Count == 0 ? "Original music" : $"{Pool(c).Tracks.Count} track{(Pool(c).Tracks.Count == 1 ? "" : "s")}" + (Pool(c).Enabled ? "" : " · disabled"))).ToArray();
+        bool Replaced(MusicCue c) => config.MusicEnabled && Pool(c).Enabled && Pool(c).Tracks.Count > 0;
+        var cues = MusicLibrary.Cues.Where(c => (musicCategory == "All categories" || c.Category == musicCategory) &&
+            (musicFilter == "All songs" || Replaced(c) == (musicFilter == "Replaced")) &&
+            (c.DisplayName + " " + c.GameCue + " " + c.OriginalTitle + " " + c.Context).Contains(musicSearch, StringComparison.OrdinalIgnoreCase));
+        var sorted = musicSort == "Replaced first" ? cues.OrderByDescending(Replaced).ThenBy(c => c.DisplayName) :
+            musicSort == "Not replaced first" ? cues.OrderBy(Replaced).ThenBy(c => c.DisplayName) : cues.OrderBy(c => c.DisplayName);
+        cueList.ItemsSource = sorted.Select(c => new CueRow(c, Replaced(c) ? $"Replaced · {Pool(c).Tracks.Count} track{(Pool(c).Tracks.Count == 1 ? "" : "s")}" :
+            Pool(c).Tracks.Count > 0 ? "Not replaced · pool disabled" : "Not replaced · original music")).ToArray();
+        if (cueCount != null) cueCount.Text = $"{cueList.Items.Count} of {MusicLibrary.Cues.Count} cues · {MusicLibrary.Cues.Count(Replaced)} replaced";
         cueList.SelectedItem = cueList.Items.Cast<CueRow>().FirstOrDefault(r => r.Cue.Id == selected);
         if (cueList.SelectedItem == null && cueList.Items.Count > 0) cueList.SelectedIndex = 0;
     }
@@ -162,18 +181,21 @@ public partial class MainWindow : Window
         var cue = currentCue; var pool = Pool(cue);
         var enabled = new CheckBox { Content = "Use this replacement pool", IsChecked = pool.Enabled }; enabled.Click += (_, _) => { EditablePool().Enabled = enabled.IsChecked == true; SaveDraft(); FilterCues(); };
         var head = Stack(Text(cue.DisplayName, 22), Text(cue.Category + " · Original: " + cue.OriginalTitle, 12, "#65D6C0"), Text(cue.Context, 12, "#A6BAC5"), enabled);
-        var headerScroll = new ScrollViewer { Content = head, MaxHeight = ActualHeight < 700 ? 105 : 175, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }; editor.Children.Add(headerScroll);
+        UIElement header = ActualHeight < 700 ? head : new ScrollViewer { Content = head, MaxHeight = 175, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }; editor.Children.Add(header);
         trackList = new() { ItemTemplate = CueTemplate(), AllowDrop = true };
+        if (ActualHeight < 700) { trackList.MinHeight = 120; trackList.MaxHeight = 200; }
         trackList.ItemsSource = pool.Tracks.Select(id => { var t = config.Library[id]; return new TrackRow(id, t.Filename, File.Exists(library.TrackPath(id)) ? TimeSpan.FromSeconds(t.Duration).ToString(@"mm\:ss") : "Missing file — use Locate File"); }).ToArray();
         if (trackList.Items.Count > 0) trackList.SelectedIndex = 0;
         trackList.MouseDoubleClick += (_, _) => PreviewAction(PlaySelected);
         trackList.Drop += (_, e) => { if (!busy && e.Data.GetData(DataFormats.FileDrop) is string[] files) _ = AddTracks(files); };
         Grid.SetRow(trackList, 1); editor.Children.Add(trackList);
         var footer = Stack(Text(pool.Tracks.Count == 0 ? "Original music plays when this pool is empty." : "One track always plays. Multiple tracks randomize without immediate repeats.", 12, "#A6BAC5"),
-            Actions(Button("Add Music", ChooseMusic, true), Button("Add Folder", ChooseFolder), Button("Play", () => PreviewAction(PlaySelected))),
+            Actions(Button("Add Music", ChooseMusic, true), Button("Add Folder", ChooseFolder)),
             Actions(Button("Remove", RemoveTrack), Button("Locate File", LocateTrack), Button("Reset to Original", () => { EditablePool().Tracks.Clear(); SaveDraft(); ShowPage("Music"); })),
             Actions(Button("Preview Original", () => PreviewAction(PlayOriginal))));
-        Grid.SetRow(footer, 2); editor.Children.Add(footer); var card = new Border { Child = editor, Background = Brush("#192834"), CornerRadius = new(10), Padding = new(20) }; Grid.SetColumn(card, 1); grid.Children.Add(card);
+        Grid.SetRow(footer, 2); editor.Children.Add(footer);
+        UIElement editorContent = ActualHeight < 700 ? new ScrollViewer { Content = editor, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled } : editor;
+        var card = new Border { Child = editorContent, Background = Brush("#192834"), CornerRadius = new(10), Padding = new(20) }; Grid.SetColumn(card, 1); grid.Children.Add(card);
     }
     void ChooseMusic() { var d = new OpenFileDialog { Filter = "Ogg Vorbis music|*.ogg", Multiselect = true }; if (d.ShowDialog(this) == true) _ = AddTracks(d.FileNames); }
     void ChooseFolder() { var d = new OpenFolderDialog { Title = "Choose a music folder" }; if (d.ShowDialog(this) == true) _ = AddTracks(Directory.GetFiles(d.FolderName, "*.ogg", SearchOption.TopDirectoryOnly)); }
@@ -358,6 +380,7 @@ public partial class MainWindow : Window
             config.MusicPools[currentCue.Id] = new() { Tracks = [a.Id, b.Id, missing.Id] };
         }
         double dpi = Environment.GetCommandLineArgs().Contains("--dpi150") ? 144 : 96;
+        if (Environment.GetCommandLineArgs().Contains("--verify-browser")) VerifyMusicBrowser();
         foreach (string name in new[] { "Home", "Music", "Home Points", "Installation / Game", "Backups & Repair", "Settings", "About" })
         {
             ShowPage(name); await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); UpdateLayout();

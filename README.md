@@ -6,7 +6,7 @@ Manage your own soundtrack and Unlimited Home Points in one desktop app. This bu
 
 - Replace any of the **71 discovered music cues**: exploration, battle, boss, victory, story, title, and special themes. Seven ambience cues are also available.
 - Give each cue one track or a random pool. Empty or disabled pools play original music.
-- Search by cue name, area, original title, or identifier. Regions sharing one game cue share one replacement pool.
+- Search by cue name, area, original title, or identifier. Filter by **All songs**, **Replaced**, or **Not replaced**, and sort alphabetically or put either replacement status first. Regions sharing one game cue share one replacement pool.
 - Preview with play/pause, stop, seek, previous/next, and volume.
 - Enable Unlimited Home Points alongside music in one safe patch operation.
 - Repair, restore vanilla, and archive recognized legacy artifacts.
@@ -46,7 +46,9 @@ Keep the game's built-in Random Music OFF for predictable per-cue assignments. W
 
 ## Preview and edit
 
-Select a track and **Play**, or double-click it. The bottom player pauses/resumes, stops, seeks, adjusts preview volume, and moves between tracks. Previewing does not modify deployed game files.
+Select a track and use the bottom **Play** button, or double-click it. The compact player pauses/resumes, stops, seeks, adjusts preview volume, and moves between tracks. Hover over an icon for its label. Previewing does not modify deployed game files.
+
+The Music browser counts enabled, nonempty pools as **Replaced**. Empty or disabled pools appear under **Not replaced**; turning replacement music off in Settings makes every cue not replaced. Status reflects your draft configuration, which reaches the game after Apply Changes. Search, category, status filter, and sort choices stay selected while editing pools or switching pages during the session.
 
 Select a cue and choose **Preview Original** to hear its default game music or ambience. The same bottom player controls playback. Originals are read directly from your installed soundtrack; they are not imported into a replacement pool. Select your game folder in **Installation / Game** first. Previous/Next apply to replacement pools and are disabled during an original preview.
 
@@ -87,6 +89,8 @@ To uninstall: close game, Restore Vanilla, optionally clean legacy files, then d
 ## Development
 
 Use a .NET 8 SDK. Build with `./tools/build-manager.ps1`; it also discovers the private SDK under `artifacts/dotnet`.
+
+After a Release build, run the isolated Music browser checks and render all pages with `dotnet src/CrystalProjectModManager/bin/Release/net8.0-windows/CrystalProjectModManager.dll --render artifacts/ui-check --verify-browser`. Add `--small --dpi150` to check the minimum window size at a 150% render scale. Results are written to `music-browser-checks.txt` beside the screenshots; configuration uses an isolated `qa-data` folder.
 
 Run tests with your supported pristine executable and a developer FFmpeg executable that generates original test tones:
 

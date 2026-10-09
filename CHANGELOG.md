@@ -1,5 +1,12 @@
 # Changelog
 
+## Manager UI update — 2026-10-09
+
+- Added All songs / Replaced / Not replaced filters and alphabetical or replacement-status sorting, with visible cue counts.
+- Replacement status follows enabled, nonempty draft pools and the global music setting. Browser choices survive editing and page navigation.
+- Simplified preview to a shared icon player with accessible labels, removing the duplicate pool Play button.
+- Refreshed the sidebar, player, list borders, search label, and dark dropdown styling.
+
 ## Mod Manager 0.1.0-rc1 development preview — 2026-10-07
 
 - Added .NET 8 WPF manager with all seven pages, pool editing, playback preview, and Steam detection.
