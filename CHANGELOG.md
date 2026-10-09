@@ -1,5 +1,10 @@
 # Changelog
 
+## 10× enemy sprites — 2026-10-09
+
+- Accept uniform 10× PNG replacements alongside 1×, 2× and 4× images while retaining the original in-game size, atlas fit and portrait crops.
+- Upgrade the existing HD helper safely. Image limits remain 8192 pixels per axis, 16,777,216 pixels total and 32 MiB per PNG.
+
 ## Sprite edit detection — 2026-10-09
 
 - Refresh pending sprite updates when opening the sprite page, choosing an editing folder, replacing a PNG, or returning from an external editor.

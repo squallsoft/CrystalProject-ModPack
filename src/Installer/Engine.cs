@@ -180,9 +180,13 @@ internal sealed class Engine
         // Previously shipped helpers, verified against first-party runtime source.
         || (name == "CrystalProjectRandomMusic.dll" && (hash == LegacyRuntimeHash
             || hash == "e54d32438d0e266d8559a07816f68989096196c0cafea248a74b0458d7b412d8"
-            || hash == "f15436b50ebbe5f68542c4a95bcd156a7fe0b246e086fe1f40640f6b23f9392f"))
+            || hash == "f15436b50ebbe5f68542c4a95bcd156a7fe0b246e086fe1f40640f6b23f9392f"
+            || hash == "b57f39fe47e3a33ca49d04312eb706178f31f1c6515247d75d69afd7cdbc5b41"))
         || (name == "CrystalProjectHomePoints.dll" && (hash == "997d7be54518622a8047feb6a8c66ff77bbae4da348cab7d88dc7b9909bedbdd"
-            || hash == "ff39394b03baee6e09aa898ce78bcf069716575cb1971a12c333fccf9a364ec1"));
+            || hash == "ff39394b03baee6e09aa898ce78bcf069716575cb1971a12c333fccf9a364ec1"
+            || hash == "2122432d4c033f270fc7de8930742cab77d77fea86f465ae849417a8ef914aba"))
+        || (name == "CrystalProjectHDSprites.dll" && (hash == "e9243bb7e7ffdd36aa3425e3c54cefe1a8c7afcfab73ad2fa6027db247c3a22a"
+            || hash == "4020f3d81093e76581f73b36a55a5d46345065880fcba6dfbb6b0812e70afdf7"));
     void ValidateHdSelection(Selection selection, Dictionary<string, string>? assets, Dictionary<string, string> hashes, bool currentHd)
     {
         SafeTarget(SpriteSizesName); string installed = Path.Combine(Game, SpriteSizesName);

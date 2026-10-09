@@ -33,7 +33,7 @@ public partial class MainWindow
         var hd = Button(installed?.HdSprites == true ? "HD Support Installed" : "Install HD Support", () => _ = InstallHdSprites()); hd.IsEnabled = loaded && installed != null && !installed.HdSprites;
         var removeHd = Button("Remove HD Support", () => _ = RemoveHdSprites()); removeHd.IsEnabled = installed?.HdSprites == true;
         var summary = Card(Stack(Text(loaded ? $"{enemySprites.Count} enemy sprites · {installedSpriteChanges.Count} updated" : "Read the enemy sprite library", 22),
-            Text("Use original, 2×, or 4× PNGs. Keep filenames, proportions, and transparency. HD rendering preserves the original in-game size.", 13, "#A6BAC5"),
+            Text("Use original, 2×, 4×, or 10× PNGs. Keep filenames, proportions, and transparency. HD rendering preserves the original in-game size.", 13, "#A6BAC5"),
             Actions(extract, Button("Choose Edited Folder", ChooseEnemySpriteFolder), validate, apply),
             Actions(Button("Reload Sprites", () => _ = LoadEnemySprites()), Button("Open Editing Folder", () => Open(config.EnemySpritesFolder)), restore, hd, removeHd),
             Text(config.EnemySpritesFolder ?? "No editing folder selected", 12, "#65D6C0"),
@@ -111,7 +111,7 @@ public partial class MainWindow
             var service = SpriteService(); var progress = SpriteProgress("Extracting");
             config.EnemySpritesFolder = await Task.Run(() => service.ExtractAll(destination, progress)); spritePlan = null; SaveDraft();
             await CheckEnemySpriteEdits();
-            MessageBox.Show(this, $"Extracted {enemySprites.Count} sprites to:\n{destination}\n\nKeep filenames and use original, 2×, or 4× dimensions. Then Validate Edited Folder.", "Enemy sprites extracted");
+            MessageBox.Show(this, $"Extracted {enemySprites.Count} sprites to:\n{destination}\n\nKeep filenames and use original, 2×, 4×, or 10× dimensions. Then Validate Edited Folder.", "Enemy sprites extracted");
         });
     }
     void ChooseEnemySpriteFolder()
@@ -134,7 +134,7 @@ public partial class MainWindow
     void ReplaceEnemySprite(SpriteEntry? sprite)
     {
         if (sprite == null || config.EnemySpritesFolder == null) return;
-        var dialog = new OpenFileDialog { Title = $"Choose a 1×, 2×, or 4× PNG for {sprite.Name} (base {sprite.Width} × {sprite.Height})", Filter = "PNG images|*.png" };
+        var dialog = new OpenFileDialog { Title = $"Choose a 1×, 2×, 4×, or 10× PNG for {sprite.Name} (base {sprite.Width} × {sprite.Height})", Filter = "PNG images|*.png" };
         if (dialog.ShowDialog(this) != true) return;
         var folder = config.EnemySpritesFolder;
         _ = Run("Preparing replacement sprite…", async () =>

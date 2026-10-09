@@ -53,6 +53,8 @@ if (args.Length > 2)
 {
     foreach (string helper in new[] { "CrystalProjectRandomMusic.dll", "CrystalProjectHomePoints.dll" })
         File.Copy(Path.Combine(args[2], helper), Path.Combine(game, helper), true);
+    string previousHd = Path.Combine(args[2], "CrystalProjectHDSprites.dll");
+    if (File.Exists(previousHd)) File.Copy(previousHd, Path.Combine(game, "CrystalProjectHDSprites.dll"), true);
     // Older releases had no helper ownership hashes in their manifests.
     File.WriteAllText(engine.Manifest, System.Text.Json.JsonSerializer.Serialize(engine.Record()! with { HelperHashes = null }));
 }
@@ -102,6 +104,10 @@ engine.Apply(new(false, true, true)); Check(engine.Inspect().Mods == new Selecti
 File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), Png(entries[0].Width * 4, entries[0].Height * 4));
 var upgrade = service.ValidateFolder(workspace); service.Apply(upgrade, engine.Idle, Install);
 Check(upgrade.Changes.Count == 1 && service.InstalledSprites()[0].Width == entries[0].Width * 4, "Installed 2× sprite upgrades to 4× against original baseline");
+File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), Png(entries[0].Width * 10, entries[0].Height * 10));
+var tenfold = service.ValidateFolder(workspace); service.Apply(tenfold, engine.Idle, Install);
+Check(tenfold.Changes.Count == 1 && tenfold.Changes[0].Scale == 10 && service.InstalledSprites()[0].Height == entries[0].Height * 10, "10× sprites validate and deploy alongside original and 4× images");
+Refused(() => EnemySprites.Scale(100, 80, 10, 20), "Nonuniform 10× enlargement refused");
 File.WriteAllBytes(Path.Combine(workspace, entries[0].Filename), entries[0].Png); File.WriteAllBytes(Path.Combine(workspace, entries[1].Filename), entries[1].Png);
 var normal = service.ValidateFolder(workspace); service.Apply(normal, engine.Idle);
 Check(normal.HdSprites == 0 && File.ReadAllBytes(live).SequenceEqual(original), "HD sprites can return to original resolution without changing filenames");

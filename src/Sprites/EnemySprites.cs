@@ -126,8 +126,8 @@ public sealed class EnemySprites
     }
     public static int Scale(int width, int height, int originalWidth, int originalHeight)
     {
-        foreach (int factor in new[] { 1, 2, 4 }) if (width == originalWidth * factor && height == originalHeight * factor) return factor;
-        throw new InvalidDataException($"Use a {originalWidth} × {originalHeight}, {originalWidth * 2} × {originalHeight * 2}, or {originalWidth * 4} × {originalHeight * 4} PNG (1×, 2×, or 4×).");
+        foreach (int factor in new[] { 1, 2, 4, 10 }) if (width == originalWidth * factor && height == originalHeight * factor) return factor;
+        throw new InvalidDataException($"Use a {originalWidth} × {originalHeight}, {originalWidth * 2} × {originalHeight * 2}, {originalWidth * 4} × {originalHeight * 4}, or {originalWidth * 10} × {originalHeight * 10} PNG (1×, 2×, 4×, or 10×).");
     }
     public static byte[] SizeCatalog(IReadOnlyList<SpriteEntry> originals) => Encoding.UTF8.GetBytes("CrystalProjectHDSprites:1\n" + string.Join("\n", originals.Select(e => $"Monster/{e.Name}|{e.Width}|{e.Height}")) + "\n");
     public byte[] OriginalSizeCatalog() => Locked(() => SizeCatalog(Parse(Baseline(Read(ArchivePath)))));

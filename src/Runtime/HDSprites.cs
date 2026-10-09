@@ -46,7 +46,7 @@ namespace CrystalProjectHDSprites
                 if (Catalog(game).TryGetValue(key, out size))
                 {
                     int width = Actual(texture, "Width"), height = Actual(texture, "Height");
-                    if (width == size.Width && height == size.Height || width == size.Width * 2 && height == size.Height * 2 || width == size.Width * 4 && height == size.Height * 4)
+                    if (width == size.Width && height == size.Height || width == size.Width * 2 && height == size.Height * 2 || width == size.Width * 4 && height == size.Height * 4 || width == size.Width * 10 && height == size.Height * 10)
                         Sizes.Add(texture, size);
                 }
                 return texture;

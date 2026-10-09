@@ -1,4 +1,4 @@
-﻿# Crystal Project Mod Manager
+# Crystal Project Mod Manager
 
 **0.1.0-rc1 development preview · Windows x64 · Crystal Project Steam 1.6.9.0**
 
@@ -61,12 +61,12 @@ Draft edits are saved automatically and reach the game only after **Apply Change
 
 1. Select your game folder in **Installation / Game**, then open **Enemy Sprites**. The manager reads all textures in `Content/Textures/Monster.dat`.
 2. Choose **Extract All Sprites** and a parent folder. The manager creates a new editing folder containing every original PNG and `sprites.json`.
-3. Edit any or all PNGs in your image editor. Keep extracted filenames and use **1×, 2×, or 4× dimensions** in both axes; preserve transparency for clean edges. For a 92 × 162 sprite, use 92 × 162, 184 × 324, or 368 × 648. **Replace Selected PNG** imports a prepared replacement into the editing folder. Search and select a sprite to preview its editing-folder image and resolution.
+3. Edit any or all PNGs in your image editor. Keep extracted filenames and use **1×, 2×, 4×, or 10× dimensions** in both axes; preserve transparency for clean edges. For a 92 × 162 sprite, use 92 × 162, 184 × 324, 368 × 648, or 920 × 1620. **Replace Selected PNG** imports a prepared replacement into the editing folder. Search and select a sprite to preview its editing-folder image and resolution.
 4. Choose **Validate Edited Folder**. The manager decodes every supplied PNG, checks its dimensions, and identifies files differing from the currently installed sprites. Missing PNGs leave their installed sprite unchanged; unknown PNG filenames are rejected. Use **Choose Edited Folder** to reconnect an existing export.
 5. Close Crystal Project and choose **Apply N Sprite Updates**. This applies the validated snapshot; validate again after further artwork edits. HD images automatically install the game's HD rendering patch and original-size catalog before the sprite archive changes. You can also choose **Install HD Support** first. The archive is replaced atomically, retaining every unchanged sprite and its metadata. The first sprite update saves a verified archive backup outside Steam.
 6. **Restore Backed-Up Sprites** restores the exact archive captured before the first manager sprite update. Your edited PNGs stay in the editing folder. Extraction after updates still exports the backed-up originals.
 
-Original and HD images can coexist. HD rendering retains the original battle size, indicator positions, outline thickness, atlas size, portrait crops, and integer-rounded sprite centers while loading all high-resolution pixels. A 4× image uses roughly 16× the original texture memory. Supported PNGs are at most 8192 pixels per axis, 16,777,216 pixels total, and 32 MiB per file.
+Original and HD images can coexist. HD rendering retains the original battle size, indicator positions, outline thickness, atlas size, portrait crops, and integer-rounded sprite centers while loading all high-resolution pixels. A 4× image uses roughly 16× the original texture memory; a 10× image uses roughly 100×. Larger source sprites may exceed the image limits at 10×. Supported PNGs are at most 8192 pixels per axis, 16,777,216 pixels total, and 32 MiB per file.
 
 Sprite updates have their own Apply and Restore controls on the Enemy Sprites page. Home's **Apply Changes** handles music/Home Points and retains installed HD support. **Restore Vanilla** does not change the sprite archive and is blocked while HD images remain. Restore sprites first, then use **Remove HD Support** to remove only the rendering patch while retaining music/Home Points, or Restore Vanilla to remove all executable patches. Sprite restoration keeps HD support installed until explicitly removed. Backups are stored under `%LOCALAPPDATA%/CrystalProjectModManager/EnemySprites/`, separately for each installation.
 

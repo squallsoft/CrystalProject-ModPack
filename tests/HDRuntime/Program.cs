@@ -23,10 +23,10 @@ class Program
             GC.SuppressFinalize(texture);
             textureType.GetProperty("Width", Fields).SetValue(texture, width, null); textureType.GetProperty("Height", Fields).SetValue(texture, height, null); return texture;
         }
-        object normal = Texture(10, 20), hd2 = Texture(20, 40), hd4 = Texture(40, 80), alt = Texture(48, 24);
+        object normal = Texture(10, 20), hd2 = Texture(20, 40), hd4 = Texture(40, 80), hd10 = Texture(100, 200), alt = Texture(48, 24);
         var monsterType = game.GetType("Sang.SangData.SangMonster"); object monster = FormatterServices.GetUninitializedObject(monsterType); monsterType.GetField("TexturePath", Fields).SetValue(monster, "Monster/Test"); monsterType.GetField("TexturePathAlt", Fields).SetValue(monster, "Monster/Alt");
         var get = game.GetType("Sang.Battle.CBattle").GetMethod("GetMonsterTexture", Fields);
-        foreach (var item in new[] { normal, hd2, hd4 })
+        foreach (var item in new[] { normal, hd2, hd4, hd10 })
         {
             textures["Monster/Test"] = item; object selected = get.Invoke(null, new[] { monster });
             Check(ReferenceEquals(selected, item) && Runtime.LogicalWidth(item) == 10 && Runtime.LogicalHeight(item) == 20, "Patched texture lookup registers logical dimensions for actual width " + textureType.GetProperty("Width").GetValue(item, null));
@@ -37,8 +37,11 @@ class Program
         textures["Monster/Alt"] = alt; user.GetType().GetField("ProfanityFilter", Fields).SetValue(user, true);
         Check(ReferenceEquals(get.Invoke(null, new[] { monster }), alt) && Runtime.LogicalWidth(alt) == 12 && Runtime.LogicalHeight(alt) == 6, "Alternate texture uses its own original dimensions");
         Check(Math.Abs(Runtime.RenderScale(2f, hd4) - 0.5f) < 0.00001f, "HD atlas scale retains original displayed dimensions");
+        Check(Math.Abs(Runtime.RenderScale(2f, hd10) - 0.2f) < 0.00001f, "10× atlas scale retains original displayed dimensions");
         var rectangleType = textureType.Assembly.GetType("Microsoft.Xna.Framework.Rectangle"); object region = Activator.CreateInstance(rectangleType, new object[] { 3, 5, 40, 20 }); object scaled = Runtime.ScaleRegion(region, hd4);
         Check((int)rectangleType.GetField("X").GetValue(scaled) == 12 && (int)rectangleType.GetField("Y").GetValue(scaled) == 20 && (int)rectangleType.GetField("Width").GetValue(scaled) == 160 && (int)rectangleType.GetField("Height").GetValue(scaled) == 80, "Portrait crop uses actual HD pixel coordinates");
+        object tenRegion = Activator.CreateInstance(rectangleType, new object[] { 3, 5, 4, 2 }); object tenScaled = Runtime.ScaleRegion(tenRegion, hd10);
+        Check((int)rectangleType.GetField("X").GetValue(tenScaled) == 30 && (int)rectangleType.GetField("Height").GetValue(tenScaled) == 20, "10× portrait crops use actual image pixels");
         object unrelated = Texture(80, 60); Check(Runtime.LogicalWidth(unrelated) == 80 && Runtime.LogicalHeight(unrelated) == 60, "Unregistered textures retain their actual dimensions");
         Check(Runtime.RenderScale(2f, normal) == 2f, "Original sprites retain normal atlas scale");
         object odd = Texture(44, 28); Runtime.Register("Monster/Odd", odd, monster);
