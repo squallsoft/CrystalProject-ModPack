@@ -1,5 +1,10 @@
 # Changelog
 
+## Sprite edit detection — 2026-10-09
+
+- Refresh pending sprite updates when opening the sprite page, choosing an editing folder, replacing a PNG, or returning from an external editor.
+- Distinguish an unchecked folder from zero changes, and revalidate current PNGs immediately before applying.
+
 ## HD installer compatibility fix — 2026-10-09
 
 - Recognize verified music and Home Points helper DLLs from the previous manager build when installing HD support.

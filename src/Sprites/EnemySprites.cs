@@ -225,7 +225,10 @@ public sealed class EnemySprites
         var entries = Parse(original); var installed = Parse(live).ToDictionary(e => e.Name);
         var known = entries.ToDictionary(e => e.Filename, StringComparer.OrdinalIgnoreCase);
         var files = Directory.GetFiles(folder).Where(f => Path.GetExtension(f).Equals(".png", StringComparison.OrdinalIgnoreCase)).ToArray();
-        if (files.Any(f => !known.ContainsKey(Path.GetFileName(f)))) throw new InvalidDataException("The folder contains unknown PNG filenames. Keep extracted sprite filenames unchanged.");
+        var unknown = files.Where(f => !known.ContainsKey(Path.GetFileName(f))).Select(Path.GetFileName).ToArray();
+        if (unknown.Length > 0) throw new InvalidDataException("PNG filenames do not match extracted sprites: "
+            + string.Join(", ", unknown.Take(5)) + (unknown.Length > 5 ? $" (and {unknown.Length - 5} more)" : "")
+            + ". Use the exact extracted filename for a replacement, or move extra PNGs into a subfolder.");
         var replacements = new Dictionary<string, byte[]>(); var changes = new List<SpriteChange>();
         for (int i = 0; i < files.Length; i++)
         {

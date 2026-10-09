@@ -63,6 +63,16 @@ public partial class MainWindow : Window
             Previous.IsEnabled = Next.IsEnabled = !previewOriginal && (trackList?.Items.Count > 1 || previewPool.Length > 1);
         };
         timer.Start();
+        Activated += (_, _) =>
+        {
+            // Let file-picker callbacks begin their operation before checking edits.
+            _ = Dispatcher.InvokeAsync(() =>
+            {
+                if (renderDirectory == null && configLoaded && !busy && page == "Enemy Sprites"
+                    && enemySprites.Count > 0 && spriteScanGame == config.GamePath && config.EnemySpritesFolder != null)
+                    _ = ValidateEnemySprites();
+            }, DispatcherPriority.Background);
+        };
         Closing += (_, e) => { if (busy) { e.Cancel = true; Status.Text = "Wait for the current operation to finish before closing."; } };
         Closed += (_, _) => { timer.Stop(); player.Dispose(); if (configLoaded) { try { library.Save(config); } catch { } } };
         Loaded += async (_, _) =>
@@ -96,7 +106,7 @@ public partial class MainWindow : Window
     WrapPanel Actions(params UIElement[] children) { var panel = new WrapPanel(); foreach (var child in children) panel.Children.Add(child); return panel; }
     void ShowPage(string name)
     {
-        if (busy) return; page = name; PageTitle.Text = name;
+        if (busy) return; bool entering = page != name; page = name; PageTitle.Text = name;
         PreviewBar.Visibility = name == "Enemy Sprites" && player.FilePath == null ? Visibility.Collapsed : Visibility.Visible;
         cueList = trackList = null;
         foreach (Button b in Navigation.Children) b.Background = Brush((string)b.Tag == name ? "#28514F" : "#142430");
@@ -109,6 +119,7 @@ public partial class MainWindow : Window
             PageSubtitle.Text = "Extract, preview, and replace your entire enemy sprite library.";
             Status.Text = "Enemy sprites use Apply Sprite Updates on this page; Home Apply Changes handles music and Home Points.";
             if (config.GamePath != null && spriteScanGame != config.GamePath) _ = LoadEnemySprites();
+            else if (entering && renderDirectory == null && config.EnemySpritesFolder != null) _ = ValidateEnemySprites();
         }
     }
     UIElement HomePage()
